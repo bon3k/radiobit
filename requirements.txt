@@ -1,0 +1,12 @@
+RPi.GPIO
+spidev
+Pillow
+Flask
+numpy
+python-mpv
+gunicorn
+smbus
+sugarpie
+websockets
+bech32
+

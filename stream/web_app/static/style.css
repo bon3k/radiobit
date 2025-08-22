@@ -1,0 +1,48 @@
+body {
+    background-color: #1e1e1e;  /* Gris oscuro */
+    color: grey;  /* Texto blanco */
+    font-family: Arial, sans-serif;  /* Fuente legible */
+}
+
+h1 {
+    color: #ffffff;  /* Hacer el título blanco */
+}
+
+table th, table td {
+    color: white;  /* Colocar el texto de las tablas en blanco */
+}
+
+a {
+    color: #0099ff;  /* Enlaces en azul para destacarlos */
+}
+
+a:hover {
+    color: #66ccff;  /* Cambiar color del enlace al pasar el mouse */
+}
+
+input[type="text"], .form-control {
+    background-color: #2b2b2b; /* Color oscuro similar al fondo */
+    color: grey; /* Texto gris */
+    border: 1px solid #444; /* Borde sutil */
+}
+
+.input-group-text {
+    background-color: #2b2b2b; /* Color oscuro */
+    color: grey; /* Texto gris */
+    border: 1px solid #444; /* Borde sutil */
+}
+
+.list-group-item {
+    background-color: #2b2b2b; /* Coincide con el fondo oscuro */
+    color: grey; /* Texto gris */
+    border: 1px solid #444; /* Borde sutil */
+}
+
+.list-group-item a {
+    color: lightgrey; /* Mantiene los enlaces en gris claro */
+}
+
+.list-group-item a:hover {
+    color: #66ccff; /* Color más claro al pasar el mouse */
+}
+

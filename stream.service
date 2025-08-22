@@ -1,0 +1,14 @@
+[Unit]
+Description=Execute stream.sh
+After=network.target sound.target pipewire.service
+
+[Service]
+User=radiobit
+Group=radiobit
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/home/radiobit/stream/stream.sh
+PAMName=login
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

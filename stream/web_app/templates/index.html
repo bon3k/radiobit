@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>radiobit</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>radiobit</h1>
+        <a href="{{ url_for('add_connection') }}" class="btn btn-primary mb-3">New connection</a>
+        <a href="{{ url_for('file_manager') }}" class="btn btn-info mb-3">File Manager</a>
+        <a href="{{ url_for('edit_file') }}" class="btn btn-warning mb-3">edit stream</a>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Conexion</th>
+                    <th>Tipe</th>
+                    <th>Estado</th>
+                    <th>Accions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conn in connections %}
+                <tr>
+                    <td>{{ conn.name }}</td>
+                    <td>{{ conn.type }}</td>
+                    <td>{{ conn.state }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_connection', name=conn.name) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-danger">✗</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+

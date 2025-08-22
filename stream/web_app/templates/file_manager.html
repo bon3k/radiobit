@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>file manager</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>file manager</h1>
+        <p>current directory: <strong>{{ current_path }}</strong></p>
+        
+        {% if parent_path %}
+            <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary">⬆</a>
+        {% endif %}
+        
+        <hr>
+
+        <ul class="list-group">
+            {% for item in items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {% if item.is_dir %}
+                        <a href="{{ url_for('file_manager', path=item.path) }}">📁 {{ item.name }}</a>
+                        <button class="btn btn-sm btn-danger delete-button" data-path="{{ item.path }}" data-folder="true">✗</button>
+                    {% else %}
+                        📄 {{ item.name }}
+                        <div>
+                            <a href="{{ url_for('download_file', path=item.path) }}" class="btn btn-sm btn-primary">⇩</a>
+                            <button class="btn btn-sm btn-danger delete-button" data-path="{{ item.path }}" data-folder="false">✗</button>
+                        </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        <hr>
+        <h3>📤</h3>
+        <form action="{{ url_for('upload_file', path=current_path) }}" method="POST" enctype="multipart/form-data">
+            <label><strong>File:</strong></label>
+            <input type="file" name="files" class="form-control mb-2" multiple>
+
+            <label class="mt-3"><strong>Directory:</strong></label>
+            <input type="file" name="files" class="form-control mb-2" webkitdirectory directory multiple>
+
+    <button type="submit" class="btn btn-success mt-3">Upload</button>
+        </form>
+
+
+    </div>
+
+    <script>
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', function () {
+                const filePath = this.dataset.path;
+                const isFolder = this.dataset.folder === 'true';
+                const message = isFolder
+                    ? "¿Seguro que deseas eliminar esta carpeta y todo su contenido?"
+                    : "¿Seguro que deseas eliminar este archivo?";
+
+                if (confirm(message)) {
+                    fetch('/delete_file?path=' + encodeURIComponent(filePath), { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(isFolder ? "Carpeta eliminada" : "Archivo eliminado");
+                                location.reload();
+                            } else {
+                                alert("Error: " + data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error en la solicitud:", error);
+                            alert("Error de red o del servidor.");
+                        });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

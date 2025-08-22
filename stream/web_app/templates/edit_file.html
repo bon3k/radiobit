@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>edit</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>edit</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="content">Content file:</label>
+                <div id="link-container">
+                    {% for i, line in links %}
+                        <div class="input-group mb-2 link-field">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">{{ i }}</span>
+                            </div>
+                            <input type="text" class="form-control" name="links[{{ i }}]" value="{{ line }}">
+                            {% if loop.last %} <!-- Solo el último campo tiene botón de eliminar -->
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-danger" onclick="removeField(this)">X</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Done</button>
+            <button type="button" class="btn btn-primary" onclick="addField()">Add</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+
+    <script>
+        function removeField(button) {
+            var field = button.closest('.input-group');
+            field.parentNode.removeChild(field);
+            updateDeleteButtons(); // Actualizar botones de eliminar después de quitar uno
+        }
+
+        function addField() {
+            var container = document.getElementById('link-container');
+            var fields = container.getElementsByClassName('link-field');
+            var newIndex = fields.length; // El nuevo índice será el siguiente disponible
+
+            var newField = document.createElement('div');
+            newField.classList.add('input-group', 'mb-2', 'link-field');
+            newField.innerHTML = `
+                <div class="input-group-prepend">
+                    <span class="input-group-text">${newIndex}</span>
+                </div>
+                <input type="text" class="form-control" name="links[${newIndex}]" value="">
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-danger" onclick="removeField(this)">X</button>
+                </div>
+            `;
+            container.appendChild(newField);
+            updateDeleteButtons(); // Actualizar los botones de eliminar
+        }
+
+        function updateDeleteButtons() {
+            var fields = document.querySelectorAll('.link-field .input-group-append');
+            fields.forEach((field, index) => {
+                field.innerHTML = (index === fields.length - 1) ? 
+                    `<button type="button" class="btn btn-danger" onclick="removeField(this)">X</button>` : 
+                    ''; // Solo el último campo tiene botón de eliminar
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", updateDeleteButtons); // Asegurar que la actualización se haga al cargar
+    </script>
+</body>
+</html>
+

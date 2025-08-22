@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn daemon for Flask app
+After=network.target
+
+[Service]
+User=radiobit
+Group=radiobit
+WorkingDirectory=/home/radiobit/stream/web_app
+ExecStart=/home/radiobit/radioenv/bin/gunicorn -w 4 -b 0.0.0.0:8080 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
