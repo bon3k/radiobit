@@ -1,7 +1,6 @@
 # Radiobit
 
-Radiobit is a pocket-sized DIY player for MP3s, internet radio, and Nostr streams.
-It runs on a Raspberry Pi Zero with a tiny LCD display, physical controls, and a PiSugar3 battery module, and is managed through a lightweight web app for playlists, radio links, Nostr public keys, and Wi-Fi.
+Radiobit is a compact DIY music and streaming player that supports a wide range of audio formats, internet radio, and Nostr streams. Powered by a Raspberry Pi Zero, it features a small LCD screen, physical buttons, and a PiSugar3 battery pack. A minimal web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
 
 ---
 
@@ -27,9 +26,9 @@ This one-time wired connection is required to access the web app at http://radio
 
 ## Notes
 
-- Although Radiobit was designed for the **Raspberry Pi Zero 2W**, it can be built on any Raspberry Pi model as long as you use the same LCD HAT.
+- Although it was designed for the **Raspberry Pi Zero 2W**, it can be built on any Raspberry Pi model as long as you use the same LCD HAT.
 - If your **music library is very large**, it is recommended to copy the files directly to the microSD card from your computer, rather than uploading them through the web app.
-- The web app is lightweight and simple, focused on handling Wi-Fi, playlists, radio links, and Nostr keys — not on heavy file management.
+- The web app is focused on handling Wi-Fi, playlists, radio links, and Nostr keys — not on heavy file management.
 - For best performance, use high-quality microSD cards (Class 10 or better).
 
 ---
