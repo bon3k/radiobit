@@ -6,7 +6,7 @@ After=network.target
 User=radiobit
 Group=radiobit
 WorkingDirectory=/home/radiobit/stream/web_app
-ExecStart=/home/radiobit/radioenv/bin/gunicorn -w 4 -b 0.0.0.0:8080 app:app
+ExecStart=/home/radiobit/radioenv/bin/gunicorn -w 4 -b 0.0.0.0:8080 --timeout 600 app:app
 Restart=always
 
 [Install]
