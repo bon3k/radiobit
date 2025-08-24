@@ -23,13 +23,19 @@ You can either:
 
 On first boot, connect your Raspberry Pi to your router using an Ethernet-to-USB adapter.
 This one-time wired connection is required to access the web app at http://radiobit.local, where you can configure Wi-Fi (either your home network or your phone’s hotspot).
+Optionally, you can also add the Wi-Fi network using a keyboard and an HDMI display with the following commands:
+
+```bash
+nmcli device wifi list
+nmcli device wifi connect "MyNetwork" password "mypassword123"
+```
 
 ## Notes
 
 - Although it was designed for the **Raspberry Pi Zero 2W**, it can be built on any Raspberry Pi model as long as you use the same LCD HAT.
 - If your **music library is very large**, it is recommended to copy the files directly to the microSD card from your computer, rather than uploading them through the web app.
 - The web app is focused on handling Wi-Fi, playlists, radio links, and Nostr keys — not on heavy file management.
-- For best performance, use high-quality microSD cards (Class 10 or better).
+- For best performance, use a high-quality microSD card (Class 10 or better).
 
 ---
 
