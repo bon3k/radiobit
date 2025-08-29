@@ -12,7 +12,34 @@
         <h1>radiobit</h1>
         <a href="{{ url_for('add_connection') }}" class="btn btn-primary mb-3">New connection</a>
         <a href="{{ url_for('file_manager') }}" class="btn btn-info mb-3">File Manager</a>
-        <a href="{{ url_for('edit_file') }}" class="btn btn-warning mb-3">edit stream</a>
+        <a href="{{ url_for('edit_file') }}" class="btn btn-purple mb-3">edit stream</a>
+        <div class="form-group mt-4">
+            <label for="volumeRange">Default System Volume</label>
+            <input type="range" class="form-control-range" id="volumeRange" min="0" max="1" step="0.01">
+            <span id="volumeValue">{{ default_volume }}</span>
+        </div>
+
+        <script>
+            const slider = document.getElementById('volumeRange');
+            const volumeValue = document.getElementById('volumeValue');
+
+            slider.addEventListener('input', () => {
+            volumeValue.textContent = slider.value;
+            });
+
+            slider.addEventListener('change', () => {
+                fetch('/set_volume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `volume=${slider.value}`
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) alert("Error: " + data.error);
+                });
+            });
+        </script>
+
         <table class="table">
             <thead>
                 <tr>

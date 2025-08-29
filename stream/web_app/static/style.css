@@ -46,3 +46,12 @@ input[type="text"], .form-control {
     color: #66ccff; /* Color más claro al pasar el mouse */
 }
 
+.btn-purple {
+    background-color: #6f42c1; /* tono morado bootstrap-ish */
+    color: white;
+    border: none;
+}
+.btn-purple:hover {
+    background-color: #5a32a3; /* un poco más oscuro al hover */
+    color: white;
+}

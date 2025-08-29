@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 BASE_DIR = "/home/radiobit/stream/data"
 FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
-
+VOLUME_FILE = "/usr/share/wireplumber/main.lua.d/40-device-defaults.lua"
 
 def list_connections():
     connections = []
@@ -245,6 +245,30 @@ def delete_file():
     except Exception as e:
         return jsonify(success=False, error=str(e)), 500
 
+def get_default_volume():
+    try:
+        with open(VOLUME_FILE, 'r') as f:
+            for line in f:
+                m = re.search(r'\["default-volume"\]\s*=\s*([0-9.]+)', line)
+                if m:
+                    return float(m.group(1))
+    except Exception:
+        pass
+    return 0.4  # valor por defecto si falla
+
+@app.route('/set_volume', methods=['POST'])
+def set_volume():
+    try:
+        vol = float(request.form.get("volume", 0.4))
+        if not 0.0 <= vol <= 1.0:
+            return jsonify(success=False, error="Valor fuera de rango"), 400
+
+        # Ejecutar script con sudo para modificar archivo
+        subprocess.run(["sudo", "/home/radiobit/stream/set_volume.sh", str(vol)], check=True)
+
+        return jsonify(success=True, volume=vol)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=2140, debug=True)
