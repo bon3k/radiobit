@@ -115,7 +115,25 @@ source ~/radioenv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 15. Enable Services and Restart
+### 15. Configure Sudoers for Volume Control
+
+The set_volume.sh script needs to run with elevated privileges, but Radiobit requires it to work without asking for a password each time.
+To allow this, add the following line to the sudoers file:
+
+Open the editor with:
+
+```bash
+sudo visudo
+```
+
+At the end of the file, append:
+
+```ini
+radiobit ALL=(ALL) NOPASSWD: /home/radiobit/stream/set_volume.sh *
+
+```
+
+### 16. Enable Services and Restart
 
 ```bash
 sudo systemctl enable stream.service
