@@ -82,6 +82,8 @@ cp -r stream /home/radiobit/
 ```bash
 chmod +x /home/radiobit/stream/main.py
 chmod +x /home/radiobit/stream/web_app/app.py
+chmod +x /home/radiobit/stream/stream.sh
+chmod +x /home/radiobit/stream/set_volume.sh
 ```
 
 ### 11. Install System Services
