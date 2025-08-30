@@ -3,6 +3,7 @@ import os
 import subprocess
 import shutil
 import urllib.parse
+import re
 
 app = Flask(__name__)
 
@@ -103,7 +104,8 @@ def update_m3u_on_delete(folder, filename):
 @app.route('/')
 def index():
     connections = list_connections()
-    return render_template('index.html', connections=connections)
+    default_volume = get_default_volume()  # Leer valor actual
+    return render_template('index.html', connections=connections, default_volume=default_volume)
 
 
 @app.route('/edit_file', methods=['GET', 'POST'])
