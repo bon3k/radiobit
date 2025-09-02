@@ -398,10 +398,15 @@ class ControlReproduccion:
 
 
     # menu pistas
-    async def seleccionar_pista(self, leer_entrada):
-        playlist = self.playback_queue
+    async def seleccionar_pista(self, leer_entrada, playlist_index, playlist_tracks):
+        playlist = playlist_tracks
         total = len(playlist)
-        indice = self.current_mp3_index or 0
+        # Si abre la misma playlist que la actual, empieza en current_mp3_index
+        # Si es otra playlist, empieza en 0
+        if playlist_index == self.current_playlist:
+            indice = self.current_mp3_index
+        else:
+            indice = 0
         ventana_size = 10
         offset = 0
 
@@ -417,9 +422,9 @@ class ControlReproduccion:
             for i in range(offset, min(offset + ventana_size, total)):
                 nombre = os.path.basename(playlist[i]).replace("_", " ").replace(".mp3", "")
                 prefijo = "> " if i == indice else "  "
-                if i == self.current_mp3_index:
-                    nombre = "* " + nombre
-                lineas.append(prefijo + nombre)
+                reproduciendo = "* " if (self.current_playlist == playlist_index and i == self.current_mp3_index) else ""
+
+                lineas.append(prefijo + reproduciendo + nombre)
 
             await self.mostrar_menu_async(lineas, indice - offset, titulo=f"TRACK {indice + 1}/{total}")
 
@@ -430,11 +435,19 @@ class ControlReproduccion:
             elif entrada == "arriba":
                 indice = (indice - 1) % total
             elif entrada == "enter":
-                if self.current_mp3_index != indice:
+                if self.current_playlist != playlist_index:
+                    # cambiar a la nueva playlist
+                    self.current_playlist = playlist_index
+                    self.playback_queue = playlist_tracks
                     self.current_mp3_index = indice
-                    self.ignore_idle_once = True
+                    await self.play_current_mp3()
+                elif self.current_mp3_index != indice:
+                    # cambiar solo la pista dentro de la misma playlist
+                    self.current_mp3_index = indice
                     await self.play_current_mp3()
                 break
+            elif entrada == "volver":
+                return await self.seleccionar_playlist(leer_entrada)
             elif entrada is None:
                 break
 
@@ -450,43 +463,68 @@ class ControlReproduccion:
 
         seleccion = self.current_playlist
         total = len(self.playlists)
+
+        # cursor_index para controlar dónde esta el cursor en el menú
+        cursor_index = 0  # siempre empieza arriba en un menu nuevo
         ventana_size = 10
         offset = 0
 
         while True:
-            if seleccion < offset:
-                offset = seleccion
-            elif seleccion >= offset + ventana_size:
-                offset = seleccion - ventana_size + 1
+            if cursor_index < offset:
+                offset = cursor_index
+            elif cursor_index >= offset + ventana_size:
+                offset = cursor_index - ventana_size + 1
 
             lineas = []
             for i in range(offset, min(offset + ventana_size, total)):
                 nombre = os.path.basename(os.path.dirname(self.playlists[i][0]))
-                prefijo = "> " if i == seleccion else "  "
-                if i == self.current_playlist:
-                    nombre = "* " + nombre
-                lineas.append(prefijo + nombre)
-            await self.mostrar_menu_async(lineas, seleccion - offset, titulo=f"PLAYLIST {seleccion + 1}/{total}")
+                prefijo = "> " if i == cursor_index else "  "
+                reproduciendo = "* " if i == self.current_playlist else ""
+                lineas.append(prefijo + reproduciendo + nombre)
+
+            await self.mostrar_menu_async(lineas, cursor_index - offset, titulo=f"PLAYLIST {cursor_index + 1}/{total}")
+
 
             entrada = await leer_entrada()
 
             if entrada == "arriba":
-                seleccion = (seleccion - 1) % total
+                cursor_index = (cursor_index - 1) % total
             elif entrada == "abajo":
-                seleccion = (seleccion + 1) % total
+                cursor_index = (cursor_index + 1) % total
             elif entrada == "enter":
-                if self.current_playlist != seleccion:
-                    self.current_playlist = seleccion
+                if self.current_playlist != cursor_index:
+                    self.current_playlist = cursor_index
                     self.current_mp3_index = 0
                     self.playback_queue = self.playlists[self.current_playlist][1]
-                    self.ignore_idle_once = True
                     await self.play_current_mp3()
+                break
+            elif entrada == "extra":
+                # Abrir menu de pistas de la playlist bajo el cursor
+                playlist_index = cursor_index
+                playlist_tracks = self.playlists[playlist_index][1]  # lista de pistas de esa playlist
+
+                # Guarda el indice actual para restaurar despues si no se selecciona nada
+                old_index = self.current_mp3_index
+
+                # Determinar índice inicial del cursor
+                if playlist_index == self.current_playlist:
+                    start_index = self.current_mp3_index
+                else:
+                    start_index = 0
+
+                self.current_mp3_index = start_index
+                await self.seleccionar_pista(leer_entrada, playlist_index, playlist_tracks)
+
+                # restaurar indice si no se selecciono otra pista
+                if self.current_mp3_index == start_index:
+                    self.current_mp3_index = old_index
                 break
             elif entrada is None:
                 break
 
         self.en_menu = False
         await self.cerrar_menu_async()
+
 
     # menu system
     async def menu_system(self, leer_entrada):

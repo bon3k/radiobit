@@ -77,6 +77,14 @@ async def leer_entrada_menu():
             interfaz_lcd.update_activity()
             await asyncio.sleep(0.2)
             return "enter"
+        if not GPIO.input(JOYSTICK_UP_PIN):
+            interfaz_lcd.update_activity()
+            await asyncio.sleep(0.2)
+            return "extra"
+        if not GPIO.input(JOYSTICK_DOWN_PIN):
+            interfaz_lcd.update_activity()
+            await asyncio.sleep(0.2)
+            return "volver"
         if ahora - tiempo_inicio > timeout:
             return None  # Inactividad
 
@@ -134,7 +142,9 @@ async def main_loop():
                 if press_duration < long_press_duration:
                     if control_reproduccion.mode == "mp3":
                         in_menu = True
-                        await control_reproduccion.seleccionar_pista(leer_entrada_menu)
+                        playlist_index = control_reproduccion.current_playlist
+                        playlist_tracks = control_reproduccion.playback_queue
+                        await control_reproduccion.seleccionar_pista(leer_entrada_menu, playlist_index, playlist_tracks)
                         in_menu = False
                 button3_press_time = None
 
