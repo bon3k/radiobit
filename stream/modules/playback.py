@@ -395,7 +395,21 @@ class ControlReproduccion:
             self.mpv_player.replaygain = self.replaygain_mode
         except Exception:
             pass
-
+        
+    def refresh_display(self):
+        """Refresca la pantalla según el modo actual."""
+        if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
+            self.lcd_interface.display_image(self.ultimo_frame_stream)
+        elif self.mode == "mp3":
+            mp3_file = self.mp3_actual()
+            if mp3_file:
+                titulo = os.path.basename(mp3_file)
+                self.lcd_interface.display_mp3_info(
+                    titulo,
+                    self.estado_reproduccion.get("time", 0),
+                    self.estado_reproduccion.get("duration", 0),
+                    volume_level=int(self.estado_reproduccion.get("volume", 0))
+                )
 
     # menu pistas
     async def seleccionar_pista(self, leer_entrada, playlist_index, playlist_tracks):
@@ -560,13 +574,11 @@ class ControlReproduccion:
                 seleccion = (seleccion - 1) % total
             elif entrada == "enter":
                 if seleccion == 0:
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
                 elif seleccion == 1:
                     self.repetir_playlist = not self.repetir_playlist
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
                 elif seleccion == 2:
                     # alterna la opcion manteniendo otras claves del config
@@ -576,11 +588,11 @@ class ControlReproduccion:
                     self.video_enabled = config['video_enabled']
                     # recrear mpv con la nueva configuracion
                     self.reboot_player()
+                    break
                 elif seleccion == 3:
                     # alterna ReplayGain track/album
                     await self.toggle_replaygain_mode()
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
                 elif seleccion == 4:
                     await self.cerrar_menu_async()
@@ -591,8 +603,7 @@ class ControlReproduccion:
                     img = self.lcd_interface.draw_text_on_lcd("Links resolved")
                     self.lcd_interface.display_image(img)
                     await asyncio.sleep(1.5)
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
                 elif seleccion == 5:
                     await self.cerrar_menu_async()
@@ -625,8 +636,7 @@ class ControlReproduccion:
                     img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
                     self.lcd_interface.display_image(img)
                     await asyncio.sleep(1.5)
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
 
                 elif seleccion == 6:
@@ -634,8 +644,7 @@ class ControlReproduccion:
                     await self.cerrar_menu_async()
                     await run_snake(self.lcd_interface)
                     # restaurar imagen del stream si estaba activo
-                    if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                    self.refresh_display
                     break
                 elif seleccion == 7:
                     await self.cerrar_menu_async()
@@ -657,8 +666,7 @@ class ControlReproduccion:
                     break
 
             elif entrada is None:
-                if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
-                        self.lcd_interface.display_image(self.ultimo_frame_stream)
+                self.refresh_display
                 break
 
         self.en_menu = False
