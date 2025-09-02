@@ -574,11 +574,11 @@ class ControlReproduccion:
                 seleccion = (seleccion - 1) % total
             elif entrada == "enter":
                 if seleccion == 0:
-                    self.refresh_display
+                    self.refresh_display()
                     break
                 elif seleccion == 1:
                     self.repetir_playlist = not self.repetir_playlist
-                    self.refresh_display
+                    self.refresh_display()
                     break
                 elif seleccion == 2:
                     # alterna la opcion manteniendo otras claves del config
@@ -592,7 +592,7 @@ class ControlReproduccion:
                 elif seleccion == 3:
                     # alterna ReplayGain track/album
                     await self.toggle_replaygain_mode()
-                    self.refresh_display
+                    self.refresh_display()
                     break
                 elif seleccion == 4:
                     await self.cerrar_menu_async()
@@ -603,7 +603,7 @@ class ControlReproduccion:
                     img = self.lcd_interface.draw_text_on_lcd("Links resolved")
                     self.lcd_interface.display_image(img)
                     await asyncio.sleep(1.5)
-                    self.refresh_display
+                    self.refresh_display()
                     break
                 elif seleccion == 5:
                     await self.cerrar_menu_async()
@@ -636,7 +636,7 @@ class ControlReproduccion:
                     img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
                     self.lcd_interface.display_image(img)
                     await asyncio.sleep(1.5)
-                    self.refresh_display
+                    self.refresh_display()
                     break
 
                 elif seleccion == 6:
@@ -644,7 +644,7 @@ class ControlReproduccion:
                     await self.cerrar_menu_async()
                     await run_snake(self.lcd_interface)
                     # restaurar imagen del stream si estaba activo
-                    self.refresh_display
+                    self.refresh_display()
                     break
                 elif seleccion == 7:
                     await self.cerrar_menu_async()
@@ -666,7 +666,7 @@ class ControlReproduccion:
                     break
 
             elif entrada is None:
-                self.refresh_display
+                self.refresh_display()
                 break
 
         self.en_menu = False
