@@ -1,6 +1,6 @@
 # Radiobit
 
-Radiobit is a compact DIY music and streaming player that supports a wide range of audio formats, internet radio, and Nostr streams. Powered by a Raspberry Pi Zero, it features a small LCD screen, physical buttons, and a PiSugar3 battery pack. A minimal web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
+DIY music and streaming player that supports a wide range of audio formats, internet radio, and Nostr streams. Powered by a Raspberry Pi Zero, it features a small LCD screen, physical buttons, and a PiSugar3 battery pack. A minimal web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
 
 ---
 
