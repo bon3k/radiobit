@@ -64,9 +64,10 @@ sudo apt install ./pisugar-server_2.0.0-1_arm64.deb
 sudo apt install ./pisugar-poweroff_2.0.0-1_arm64.deb
 ```
 
-### 8. Clone the Radiobit Repository
+### 8. Install git and clone the repository
 
 ```bash
+sudo apt install git
 git clone https://github.com/bon3k/radiobit.git
 cd radiobit
 ```
@@ -135,6 +136,15 @@ radiobit ALL=(ALL) NOPASSWD: /home/radiobit/stream/set_volume.sh *
 
 ```
 
+For the slider to work correctly, make sure the default volume line in WirePlumber’s configuration is uncommented:
+
+`/usr/share/wireplumber/main.lua.d/40-device-defaults.lua`
+
+```lua
+["default-volume"] = 0.3,
+
+```
+
 ### 16. Enable Services and Restart
 
 ```bash
@@ -146,5 +156,4 @@ sudo reboot
 
 ---
 
-This guide assumes you are logged in as user `radiobit` on your Raspberry Pi.
 
