@@ -39,17 +39,18 @@ nmcli device wifi connect "MyNetwork" password "mypassword123"
 
 ## Controls
 
-Button:                               Action:
+| Button:                               | Action:                                                  |
+|---------------------------------------|----------------------------------------------------------|
+| **PiSugar (Short + long press)**      | Power on                                                 |
+| **KEY1 (short press)**                | Change mode stream / mp3                                 |
+| **KEY2 (short press)**                | Playlist menu                                            |
+| **KEY3 (short press)**                | Track menu                                               |
+| **KEY3 (Long press)**                 | System menu                                              |
+| **Joystick (press)**                  | Confirm selection / pause                                |
+| **Joystick (directions)**             | Navigate menus / change track / volume / move in game    |
+| **KEY2 (short press, in game)**       | Restart game                                             |
+| **KEY3 (short press, in game)**       | Quit game                                                |
 
-**PiSugar (Short + long press)**   -> Power on
-**KEY1 (short press)**             -> Change mode stream / mp3
-**KEY2 (short press)**             -> Playlist menu
-**KEY3 (short press)**             -> Track menu
-**KEY3 (Long press)**              -> System menu
-**Joystick (press)**               -> Confirm selection / pause
-**Joystick (directions)**          -> Navigate menus / change track / volume / move in game
-**KEY2 (short press, in game)**    -> Restart game
-**KEY3 (short press, in game)**    -> Quit game
 
 ---
 
