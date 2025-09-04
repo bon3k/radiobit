@@ -37,6 +37,20 @@ nmcli device wifi connect "MyNetwork" password "mypassword123"
 - The web app is focused on handling Wi-Fi, playlists, radio links, and Nostr keys — not on heavy file management.
 - For best performance, use a high-quality microSD card (Class 10 or better).
 
+## Controls
+
+Button:                               Action:
+
+**PiSugar (Short + long press)**   -> Power on
+**KEY1 (short press)**             -> Change mode stream / mp3
+**KEY2 (short press)**             -> Playlist menu
+**KEY3 (short press)**             -> Track menu
+**KEY3 (Long press)**              -> System menu
+**Joystick (press)**               -> Confirm selection / pause
+**Joystick (directions)**          -> Navigate menus / change track / volume / move in game
+**KEY2 (short press, in game)**    -> Restart game
+**KEY3 (short press, in game)**    -> Quit game
+
 ---
 
 Contributions and feedback are welcome — report bugs or feature requests in the [issues](https://github.com/bon3k/radiobit/issues) or submit a pull request.
