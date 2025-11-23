@@ -25,7 +25,7 @@ ssh radiobit@radiobit.local
 Run:
 
 ```bash
-sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
+sudo apt-get update && sudo apt-get dist-upgrade -y
 ```
 
 ### 5. Enable SPI and I2C
@@ -55,13 +55,8 @@ sudo nano /boot/firmware/config.txt
 ### 7. Install PiSugar Power Manager
 
 ```bash
-wget https://github.com/PiSugar/pisugar-power-manager-rs/releases/download/v2.0.0/pisugar-server_2.0.0-1_arm64.deb
-wget https://github.com/PiSugar/pisugar-power-manager-rs/releases/download/v2.0.0/pisugar-poweroff_2.0.0-1_arm64.deb
-```
-
-```bash
-sudo apt install ./pisugar-server_2.0.0-1_arm64.deb
-sudo apt install ./pisugar-poweroff_2.0.0-1_arm64.deb
+wget https://cdn.pisugar.com/release/pisugar-power-manager.sh
+bash pisugar-power-manager.sh -c release
 ```
 
 ### 8. Install git and clone the repository
@@ -118,34 +113,7 @@ source ~/radioenv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 15. Configure Sudoers for Volume Control
-
-The set_volume.sh script needs to run with elevated privileges, but Radiobit requires it to work without asking for a password each time.
-To allow this, add the following line to the sudoers file:
-
-Open the editor with:
-
-```bash
-sudo visudo
-```
-
-At the end of the file, append:
-
-```ini
-radiobit ALL=(ALL) NOPASSWD: /home/radiobit/stream/set_volume.sh *
-
-```
-
-For the slider to work correctly, make sure the default volume line in WirePlumber’s configuration is uncommented:
-
-`/usr/share/wireplumber/main.lua.d/40-device-defaults.lua`
-
-```lua
-["default-volume"] = 0.3,
-
-```
-
-### 16. Enable Services and Restart
+### 15. Enable Services and Restart
 
 ```bash
 sudo systemctl enable stream.service

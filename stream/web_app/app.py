@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 BASE_DIR = "/home/radiobit/stream/data"
 FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
-VOLUME_FILE = "/usr/share/wireplumber/main.lua.d/40-device-defaults.lua"
+VOLUME_FILE = os.path.expanduser("~/.config/wireplumber/wireplumber.conf.d/10-default-volume.conf")
 
 def list_connections():
     connections = []
@@ -21,7 +21,6 @@ def list_connections():
             if name != "lo":
                 connections.append({"name": name, "type": type_, "state": state})
     return connections
-
 
 def update_m3u_on_add(folder, filename):
     """Añadir una pista al final del .m3u de la carpeta, si existe."""
@@ -37,7 +36,7 @@ def update_m3u_on_add(folder, filename):
     # Codificar el nombre como en el M3U original
     encoded_name = urllib.parse.quote(filename)
 
-    # Leer líneas existentes y evitar duplicados
+    # Leer lineas existentes y evitar duplicados
     try:
         with open(m3u_path, 'r', encoding='utf-8') as f:
             lines = f.read().splitlines()
@@ -45,14 +44,13 @@ def update_m3u_on_add(folder, filename):
         lines = []
 
     if any(encoded_name in line for line in lines):
-        return  # ya está en la lista
+        return  # ya esta en la lista
 
     # Si es un archivo de audio, añadirlo al final
     if filename.lower().endswith(('.mp3', '.flac', '.ogg', '.wav', '.aac', '.m4a', '.aiff', '.aif')):
         extinf_line = f"#EXTINF:-1,{os.path.splitext(filename)[0]}"
         with open(m3u_path, 'a', encoding='utf-8') as f:
             f.write(f"{extinf_line}\n{encoded_name}\n")
-
 
 def update_m3u_on_delete(folder, filename):
     """Eliminar una pista del .m3u de la carpeta, si existe."""
@@ -97,16 +95,11 @@ def update_m3u_on_delete(folder, filename):
             f.write(line.rstrip('\r\n') + "\n")
 
 
-
-
-
-
 @app.route('/')
 def index():
     connections = list_connections()
     default_volume = get_default_volume()  # Leer valor actual
     return render_template('index.html', connections=connections, default_volume=default_volume)
-
 
 @app.route('/edit_file', methods=['GET', 'POST'])
 def edit_file():
@@ -208,7 +201,7 @@ def upload_file(path):
             dest_path = os.path.join(current_path, safe_path)
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             file.save(dest_path)
-            update_m3u_on_add(current_path, os.path.basename(safe_path))  # 🔹 Actualiza M3U al añadir
+            update_m3u_on_add(current_path, os.path.basename(safe_path))  # Actualiza M3U al añadir
 
     return redirect(url_for('file_manager', path=path))
 
@@ -235,7 +228,7 @@ def delete_file():
         if os.path.exists(full_path):
             if os.path.isfile(full_path):
                 os.remove(full_path)
-                update_m3u_on_delete(folder, filename)  # 🔹 Actualiza M3U al borrar
+                update_m3u_on_delete(folder, filename)  # Actualiza M3U al borrar
                 return jsonify(success=True)
             elif os.path.isdir(full_path):
                 shutil.rmtree(full_path)
@@ -251,12 +244,23 @@ def get_default_volume():
     try:
         with open(VOLUME_FILE, 'r') as f:
             for line in f:
-                m = re.search(r'\["default-volume"\]\s*=\s*([0-9.]+)', line)
+                m = re.search(r'default-volume\s*=\s*([0-9.]+)', line)
                 if m:
                     return float(m.group(1))
     except Exception:
         pass
-    return 0.4  # valor por defecto si falla
+    # Si falla, leer el volumen actual del sistema
+    try:
+        result = subprocess.run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"],
+                                capture_output=True, text=True)
+        m = re.search(r'([\d.]+)', result.stdout)
+        if m:
+            return float(m.group(1))
+    except Exception:
+        pass
+
+    return 0.4
+
 
 @app.route('/set_volume', methods=['POST'])
 def set_volume():
@@ -265,8 +269,8 @@ def set_volume():
         if not 0.0 <= vol <= 1.0:
             return jsonify(success=False, error="Valor fuera de rango"), 400
 
-        # Ejecutar script con sudo para modificar archivo
-        subprocess.run(["sudo", "/home/radiobit/stream/set_volume.sh", str(vol)], check=True)
+        # Ejecutar script para modificar archivo
+        subprocess.run(["/home/radiobit/stream/set_volume.sh", str(vol)], check=True)
 
         return jsonify(success=True, volume=vol)
     except Exception as e:
