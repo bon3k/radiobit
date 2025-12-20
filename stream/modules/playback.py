@@ -77,7 +77,7 @@ class ControlReproduccion:
                 try:
                     self.mpv_player.terminate()
                 except Exception:
-                    # ignoramos errores al terminar
+                    # ignora errores al terminar
                     pass
         except Exception:
             pass
@@ -178,7 +178,7 @@ class ControlReproduccion:
                     mp3_files.append(unquote(path))
         return mp3_files
 
-    # arranca el sistema: resuelve npub, prepara la playlist, empieza a reproducir y lanza update_loop
+    # arranca el sistema: resuelve npub, prepara playlist/queue, empieza a reproducir y lanza update_loop
     async def iniciar(self):
         self.loop = asyncio.get_running_loop()
         self.streams = await self.resolve_all_npubs(self.streams)
@@ -478,8 +478,8 @@ class ControlReproduccion:
         seleccion = self.current_playlist
         total = len(self.playlists)
 
-        # cursor_index para controlar dónde esta el cursor en el menú
-        cursor_index = 0  # siempre empieza arriba en un menu nuevo
+        # cursor_index para controlar donde esta el cursor en el menu
+        cursor_index = self.current_playlist
         ventana_size = 10
         offset = 0
 
@@ -517,21 +517,13 @@ class ControlReproduccion:
                 playlist_index = cursor_index
                 playlist_tracks = self.playlists[playlist_index][1]  # lista de pistas de esa playlist
 
-                # Guarda el indice actual para restaurar despues si no se selecciona nada
-                old_index = self.current_mp3_index
+                # Abrir menu de pistas SIN tocar estado global
+                await self.seleccionar_pista(
+                    leer_entrada,
+                    playlist_index,
+                    playlist_tracks
+                )
 
-                # Determinar índice inicial del cursor
-                if playlist_index == self.current_playlist:
-                    start_index = self.current_mp3_index
-                else:
-                    start_index = 0
-
-                self.current_mp3_index = start_index
-                await self.seleccionar_pista(leer_entrada, playlist_index, playlist_tracks)
-
-                # restaurar indice si no se selecciono otra pista
-                if self.current_mp3_index == start_index:
-                    self.current_mp3_index = old_index
                 break
             elif entrada is None:
                 break
