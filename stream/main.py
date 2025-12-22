@@ -157,8 +157,8 @@ async def main_loop():
             interfaz_lcd.update_activity()
             await handle_joystick_action(
                 JOYSTICK_UP_PIN,
-                lambda: control_reproduccion.change_mp3("up") if control_reproduccion.mode == "mp3"
-                    else control_reproduccion.change_stream("up"),
+                lambda: control_reproduccion.transition("NEXT_MP3") if control_reproduccion.mode == "mp3"
+                    else control_reproduccion.transition("PLAY_STREAM", (control_reproduccion.current_stream + 1) % len(control_reproduccion.streams)),
                 lambda: control_reproduccion.seek(10)
             )
 
@@ -166,8 +166,8 @@ async def main_loop():
             interfaz_lcd.update_activity()
             await handle_joystick_action(
                 JOYSTICK_DOWN_PIN,
-                lambda: control_reproduccion.change_mp3("down") if control_reproduccion.mode == "mp3"
-                    else control_reproduccion.change_stream("down"),
+                lambda: control_reproduccion.transition("PREV_MP3") if control_reproduccion.mode == "mp3"
+                    else control_reproduccion.transition("PLAY_STREAM", (control_reproduccion.current_stream - 1) % len(control_reproduccion.streams)),
                 lambda: control_reproduccion.seek(-10)
             )
 

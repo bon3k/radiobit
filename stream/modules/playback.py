@@ -12,6 +12,7 @@ from pathlib import Path
 
 CONFIG_FILE = Path("/home/radiobit/config.json")
 
+
 def cargar_config():
     # lee config.json, si esta vacio o corrupto lo crea con valores por defecto
     if CONFIG_FILE.exists():
@@ -28,9 +29,12 @@ def cargar_config():
     guardar_config(config)
     return config
 
+
 def guardar_config(config):
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
+        f.write("\n")
+
 
 class ControlReproduccion:
     def __init__(self, streams_file_path, images_directory, mp3_directory, lcd_interface):
@@ -59,6 +63,9 @@ class ControlReproduccion:
         self.video_enabled = config.get("video_enabled", False)  # video desactivado por defecto
         self.replaygain_mode = config.get("replaygain_mode", "track")
         self._create_mpv()  # crear el objeto mpv segun config.json
+
+
+            ###### --------------- LOAD MPV --------------- ######
 
     def _create_mpv(self):
         """(Re)crea self.mpv_player según self.video_enabled y registra observers/callbacks."""
@@ -94,7 +101,7 @@ class ControlReproduccion:
 
         @self.mpv_player.event_callback('end-file')
 
-        # gestiona el evento mpv de fin de pista para handle_end_file
+        # gestiona el evento mpv de fin de pista
         def on_end_file(event):
             if self.manual_change:
                 return
@@ -114,12 +121,16 @@ class ControlReproduccion:
             # solo avanzar si finalizo naturalmente
             if self.mode == "mp3" and not self.is_paused and reason_str == 'eof':
                 if self.loop and self.loop.is_running():
-                    asyncio.run_coroutine_threadsafe(self.handle_end_file(), self.loop)
+                    asyncio.run_coroutine_threadsafe(self.transition("NEXT_MP3"), self.loop)
 
         self.NPUB_RE = re.compile(r"^npub1[ac-hj-np-z02-9]{58}$")
 
+
     def _es_npub(self, texto: str) -> bool:
         return bool(self.NPUB_RE.match(texto))
+
+
+            ###### --------------- LOAD DATA --------------- ######
 
     async def resolve_all_npubs(self, entries):
         resolved = []
@@ -134,11 +145,13 @@ class ControlReproduccion:
                 resolved.append(entry)
         return resolved
 
+
     def load_streams(self, file_path):
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
                 return [line.strip() for line in f if line.strip()]
         return []
+
 
     def load_images(self, directory):
         images = {}
@@ -150,6 +163,7 @@ class ControlReproduccion:
                 except ValueError:
                     continue
         return images
+
 
     def load_playlists(self, mp3_directory):
         playlists = []
@@ -168,6 +182,7 @@ class ControlReproduccion:
                     playlists.append((os.path.join(root, ''), pistas))
         return playlists
 
+
     def load_m3u_playlist(self, m3u_file_path):
         mp3_files = []
         with open(m3u_file_path, 'r') as m3u_file:
@@ -177,6 +192,9 @@ class ControlReproduccion:
                     path = os.path.join(os.path.dirname(m3u_file_path), line) if not os.path.isabs(line) else line
                     mp3_files.append(unquote(path))
         return mp3_files
+
+
+            ###### --------------- INIT SYSTEM --------------- ######
 
     # arranca el sistema: resuelve npub, prepara playlist/queue, empieza a reproducir y lanza update_loop
     async def iniciar(self):
@@ -189,6 +207,7 @@ class ControlReproduccion:
             await self.play_current_mp3()
         self.update_task = asyncio.create_task(self.update_loop())
 
+
     # obtiene de mpv la posicion de reproduccion y duracion de pista
     def actualizar_estado(self, name, value):
         if name == "time-pos":
@@ -198,27 +217,123 @@ class ControlReproduccion:
         elif name == "volume":
             self.estado_reproduccion["volume"] = int(value) if value else 0
 
-    # maneja el cambio de pista cuando llama on_end_file
-    async def handle_end_file(self):
-        if not self.playback_queue:
-            return
-        self.current_mp3_index += 1
-        if self.current_mp3_index >= len(self.playback_queue):
-            if self.repetir_playlist:
-                self.current_mp3_index = 0
-            else:
-                self.current_mp3_index = len(self.playback_queue) - 1
-                await asyncio.to_thread(self.mpv_player.stop)
-                return
-        await asyncio.to_thread(self.mpv_player.play, self.playback_queue[self.current_mp3_index])
 
-    # refresca la pantalla con el estado actual de reproduccion (pista, tiempo, batería)
+    # handle playlist/queue
+    async def play_playlist(self, playlist_index, track_index=0):
+        """
+        Cambia de playlist de forma segura y reproduce pista.
+        ESTE es el unico sitio donde se toca playback_queue.
+        """
+        if not (0 <= playlist_index < len(self.playlists)):
+            return
+
+        await self.stop_playback()
+
+        self.current_playlist = playlist_index
+        self.playback_queue = self.playlists[playlist_index][1]
+        self.current_mp3_index = track_index
+        self.mode = "mp3"
+        self.is_paused = False
+
+        await self.play_current_mp3()
+
+
+    #### ---- playback state controller ---- ####
+    async def transition(self, action, payload=None):
+        """
+        Metodo central de transicion para:
+        - reproducir pistas o streams
+        - avanzar/retroceder pistas
+        - reiniciar pistas
+        """
+        self.manual_change = True
+        try:
+
+            if action == "PLAY_MP3":
+                # comprobar si la pista REAL es la misma que esta sonando
+                pista_actual = self.mp3_actual()
+
+                pista_solicitada = (
+                    self.playback_queue[payload]
+                    if (
+                        self.playback_queue
+                        and payload is not None
+                        and 0 <= payload < len(self.playback_queue)
+                    )
+                    else None
+                )
+                # si esta sonando exactamente esa pista, no hacer nada
+                if (
+                    self.mode == "mp3"
+                    and not self.is_paused
+                    and pista_actual is not None
+                    and pista_actual == pista_solicitada
+                ):
+                    return
+                
+                await self.stop_playback()
+                self.mode = "mp3"
+                self.current_mp3_index = payload
+                self.is_paused = False
+                await self.play_current_mp3()
+
+
+            elif action == "NEXT_MP3":
+                if not self.playback_queue:
+                    self.manual_change = False
+                    return
+                
+                await self.stop_playback()
+                self.current_mp3_index += 1
+                if self.current_mp3_index >= len(self.playback_queue):
+                    if self.repetir_playlist:
+                        self.current_mp3_index = 0
+                    else:
+                        # fin real de la cola
+                        self.current_mp3_index = len(self.playback_queue) - 1
+                        self.is_paused = True
+                        return
+                    
+                await self.play_current_mp3()
+
+
+            elif action == "PREV_MP3":
+                if not self.playback_queue:
+                    self.manual_change = False
+                    return
+                
+                await self.stop_playback()
+                tiempo_actual = self.estado_reproduccion.get("time", 0)
+                if tiempo_actual > 3:
+                    # reinicia la pista actual
+                    await self.stop_playback()
+                    await self.play_current_mp3()
+                else:
+                    # retrocede a la pista anterior
+                    self.current_mp3_index = (self.current_mp3_index - 1) % len(self.playback_queue)
+                    await self.play_current_mp3()
+
+
+            elif action == "PLAY_STREAM":
+                if not self.streams:
+                    return
+                
+                if payload is not None:
+                    self.current_stream = payload
+                await self.start_stream(self.current_stream)
+
+        finally:
+            self.manual_change = False
+
+
+    # refresh pantalla con el estado actual de reproduccion (pista, tiempo, bateria)
     async def update_loop(self):
         last_battery_update = 0
         while True:
             await asyncio.sleep(0.1)
             if self.en_menu:
                 continue
+            
             if self.mode == "mp3":
                 actual = self.mp3_actual()
                 if actual:
@@ -237,33 +352,43 @@ class ControlReproduccion:
                     last_battery_update = now
                     self.lcd_interface.update_battery_icon_only()
 
+
     # detiene mpv (manejo interno)
     async def stop_playback(self):
         await asyncio.to_thread(self.mpv_player.stop)
 
-    # reproduce stream actual
-    async def start_stream(self, stream_index: int, direction="forward"):
-        if not (0 <= stream_index < len(self.streams)):
-            return
-        stream_url = self.streams[stream_index]
-        if not stream_url:
-            next_index = (stream_index + 1) % len(self.streams) if direction == "forward" else (stream_index - 1) % len(self.streams)
-            self.current_stream = next_index
-            await self.start_stream(self.current_stream, direction=direction)
-            return
 
-        self.is_paused = False
+    # reproduce stream actual
+    async def start_stream(self, stream_index: int):
+        if not self.streams or not (0 <= stream_index < len(self.streams)):
+            return
+        stream_url = self.streams[stream_index].strip()
         await self.stop_playback()
+        self.mode = "stream"
+        self.is_paused = False
+        self.current_stream = stream_index
+        # stream vacio
+        if not stream_url:
+            self.current_stream = stream_index  # marcar indice actual
+            img = self.lcd_interface.draw_text_on_lcd(
+                f"STREAM {stream_index + 1}/{len(self.streams)}\nOFFLINE"
+            )
+            self.lcd_interface.display_image(img)
+            return
+        
         try:
             await asyncio.to_thread(self.mpv_player.play, stream_url)
-            img = self.images.get(stream_index, "/home/radiobit/stream/data/stream-images/default.png")
-            self.ultimo_frame_stream = img  # guarda la imagen actual para restaurar al cerrar snake.py
+            img = self.images.get(
+                stream_index,
+                "/home/radiobit/stream/data/stream-images/default.png"
+            )
+            self.ultimo_frame_stream = img
             self.lcd_interface.display_image(img)
             self.lcd_interface.update_battery_icon_only()
         except Exception:
-            next_index = (stream_index + 1) % len(self.streams) if direction == "forward" else (stream_index - 1) % len(self.streams)
-            self.current_stream = next_index
-            await self.start_stream(self.current_stream, direction=direction)
+            img = self.lcd_interface.draw_text_on_lcd("ERROR\nPlay failed")
+            self.lcd_interface.display_image(img)
+
 
     # funcion auxiliar. actuliza indices para play_current_mp3 y change_mp3
     def mp3_actual(self):
@@ -284,74 +409,55 @@ class ControlReproduccion:
             except Exception as e:
                 print(f"Error al reproducir mp3: {e}")
 
+
     # cambio manual stream
     async def change_stream(self, direction):
         now = time.time()
         if now - self.last_change_time < 1.0:
             return
-
-        self.manual_change = True
-
-        await self.stop_playback()
-
+        
         self.last_change_time = now
-        if self.mode == "stream":
-            if direction == "up":
-                self.current_stream = (self.current_stream + 1) % len(self.streams)
-                await self.start_stream(self.current_stream, direction="forward")
-            elif direction == "down":
-                self.current_stream = (self.current_stream - 1) % len(self.streams)
-                await self.start_stream(self.current_stream, direction="backward")
 
-            self.manual_change = False
+        if not self.streams:
+            return
+
+        if direction == "forward":
+            next_index = (self.current_stream + 1) % len(self.streams)
+        else:
+            next_index = (self.current_stream - 1 + len(self.streams)) % len(self.streams)
+
+        prev_stream = self.current_stream
+
+        await self.transition("PLAY_STREAM", next_index)
+
+        if self.current_stream != prev_stream:
+            self.last_change_time = now
+
 
     # cambio manual mp3
     async def change_mp3(self, direction):
         if self.mode != "mp3" or not self.playback_queue:
             return
-
-        self.manual_change = True
-
-        await self.stop_playback()
-
+        
         if direction == "up":
-            self.current_mp3_index = (self.current_mp3_index + 1) % len(self.playback_queue)
-            await self.play_current_mp3()
+            await self.transition("NEXT_MP3")
         elif direction == "down":
-            now = time.time()
-            tiempo_actual = self.estado_reproduccion["time"]
-            if now - self.last_down_press_time < 2 or tiempo_actual < 3:
-                self.current_mp3_index = (self.current_mp3_index - 1) % len(self.playback_queue)
-            self.last_down_press_time = now
-            await self.play_current_mp3()
+            await self.transition("PREV_MP3")
 
-        self.manual_change = False
 
     # cambio de modo stream/mp3
     async def toggle_mode(self):
-
-        await self.stop_playback()
-
         if self.mode == "mp3":
-            self.mode = "stream"
-            await self.start_stream(self.current_stream)
+            await self.transition("PLAY_STREAM", self.current_stream)
         else:
-            self.mode = "mp3"
-            await self.play_current_mp3()
+            await self.transition("PLAY_MP3", self.current_mp3_index)
+
 
     # pausa mpv
     async def toggle_pause(self):
         await asyncio.to_thread(setattr, self.mpv_player, 'pause', not self.mpv_player.pause)
         self.is_paused = self.mpv_player.pause
 
-    # NO SE ESTA USANDO. sirve para cambiar de playlist sin abrir el menu
-    async def change_playlist(self):
-        self.playlists = self.load_playlists(self.mp3_directory)
-        if self.mode == "mp3" and self.playlists:
-            self.current_playlist = (self.current_playlist + 1) % len(self.playlists)
-            self.current_mp3_index = 0
-            self.playback_queue = self.playlists[self.current_playlist][1]
-            await self.play_current_mp3()
 
     # volumen
     async def change_volume(self, direction):
@@ -360,12 +466,17 @@ class ControlReproduccion:
         elif direction == "down":
             self.mpv_player.volume = max(self.mpv_player.volume - 3, 0)
 
+
     # retroceso/avance rapido
     async def seek(self, seconds):
         if self.mode == "mp3" and self.estado_reproduccion["duration"] > 0:
             new_time = max(0, min(self.estado_reproduccion["time"] + seconds, self.estado_reproduccion["duration"]))
             await asyncio.to_thread(self.mpv_player.seek, new_time, "absolute")
             self.estado_reproduccion["time"] = new_time
+
+
+            ###### --------------- MENU SWITCHES --------------- ######
+
     # reinicia mpv (video ON/OFF)
     def reboot_player(self):
         """Recrea mpv en el proceso actual y reanuda la reproduccion"""
@@ -382,6 +493,7 @@ class ControlReproduccion:
         except Exception:
             pass
 
+    # replaygain album/track
     async def toggle_replaygain_mode(self):
         self.replaygain_mode = "album" if self.replaygain_mode == "track" else "track"
 
@@ -396,8 +508,9 @@ class ControlReproduccion:
         except Exception:
             pass
         
+
     def refresh_display(self):
-        """Refresca la pantalla según el modo actual."""
+        """Refresca la pantalla segun el modo actual."""
         if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
             self.lcd_interface.display_image(self.ultimo_frame_stream)
         elif self.mode == "mp3":
@@ -411,12 +524,13 @@ class ControlReproduccion:
                     volume_level=int(self.estado_reproduccion.get("volume", 0))
                 )
 
+
+            ###### --------------- ALL MENU --------------- ######
+
     # menu pistas
     async def seleccionar_pista(self, leer_entrada, playlist_index, playlist_tracks):
         playlist = playlist_tracks
         total = len(playlist)
-        # Si abre la misma playlist que la actual, empieza en current_mp3_index
-        # Si es otra playlist, empieza en 0
         if playlist_index == self.current_playlist:
             indice = self.current_mp3_index
         else:
@@ -450,15 +564,9 @@ class ControlReproduccion:
                 indice = (indice - 1) % total
             elif entrada == "enter":
                 if self.current_playlist != playlist_index:
-                    # cambiar a la nueva playlist
-                    self.current_playlist = playlist_index
-                    self.playback_queue = playlist_tracks
-                    self.current_mp3_index = indice
-                    await self.play_current_mp3()
-                elif self.current_mp3_index != indice:
-                    # cambiar solo la pista dentro de la misma playlist
-                    self.current_mp3_index = indice
-                    await self.play_current_mp3()
+                    await self.play_playlist(playlist_index, indice)
+                else:
+                    await self.transition("PLAY_MP3", indice)
                 break
             elif entrada == "volver":
                 return await self.seleccionar_playlist(leer_entrada)
@@ -507,10 +615,7 @@ class ControlReproduccion:
                 cursor_index = (cursor_index + 1) % total
             elif entrada == "enter":
                 if self.current_playlist != cursor_index:
-                    self.current_playlist = cursor_index
-                    self.current_mp3_index = 0
-                    self.playback_queue = self.playlists[self.current_playlist][1]
-                    await self.play_current_mp3()
+                    await self.play_playlist(cursor_index, 0)
                 break
             elif entrada == "extra":
                 # Abrir menu de pistas de la playlist bajo el cursor
@@ -572,6 +677,7 @@ class ControlReproduccion:
                     self.repetir_playlist = not self.repetir_playlist
                     self.refresh_display()
                     break
+
                 elif seleccion == 2:
                     # alterna la opcion manteniendo otras claves del config
                     config = cargar_config()
@@ -581,11 +687,13 @@ class ControlReproduccion:
                     # recrear mpv con la nueva configuracion
                     self.reboot_player()
                     break
+
                 elif seleccion == 3:
                     # alterna ReplayGain track/album
                     await self.toggle_replaygain_mode()
                     self.refresh_display()
                     break
+
                 elif seleccion == 4:
                     await self.cerrar_menu_async()
                     img = self.lcd_interface.draw_text_on_lcd("Resolving links...")
@@ -597,6 +705,7 @@ class ControlReproduccion:
                     await asyncio.sleep(1.5)
                     self.refresh_display()
                     break
+                
                 elif seleccion == 5:
                     await self.cerrar_menu_async()
 
@@ -638,6 +747,7 @@ class ControlReproduccion:
                     # restaurar imagen del stream si estaba activo
                     self.refresh_display()
                     break
+                
                 elif seleccion == 7:
                     await self.cerrar_menu_async()
                     img = self.lcd_interface.draw_text_on_lcd("Rebooting...")
@@ -647,6 +757,7 @@ class ControlReproduccion:
                     await asyncio.sleep(0.8)
                     os.system("sudo reboot")
                     break
+                
                 elif seleccion == 8:
                     await self.cerrar_menu_async()
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
@@ -689,6 +800,9 @@ class ControlReproduccion:
             except asyncio.CancelledError:
                 pass
             self.menu_task = None
+
+
+            ###### --------------- CLOSE SYSTEM --------------- ######
 
     # detiene tareas y cierra mpv
     async def close(self):
