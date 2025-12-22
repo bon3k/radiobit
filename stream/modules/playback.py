@@ -1,5 +1,4 @@
 import os
-import glob
 import asyncio
 from mpv import MPV
 from urllib.parse import unquote
@@ -53,7 +52,6 @@ class ControlReproduccion:
         self.ultimo_titulo = None  # # evita redibujar pantalla si el titulo no ha cambiado
         self.en_menu = False  # # flag para los controles de menu
         self.last_change_time = 0  # # evita dobles cambios de stream por multiples pulsaciones rapidas
-        self.last_down_press_time = 0  # # controla el tiempo transcurrido despues de pulsar el boton de retroceder pista
         self.repetir_playlist = True  # # repetir playlist al terminar la cola de reproduccion
         self.playback_queue = []
         self.loop = None
@@ -73,7 +71,7 @@ class ControlReproduccion:
             ytdl=True,
             loop_playlist="no",
             volume=40,
-            replaygain='album',
+            replaygain=self.replaygain_mode,
             replaygain_preamp=0,
             replaygain_clip='no'
         )
@@ -270,7 +268,7 @@ class ControlReproduccion:
                     and pista_actual == pista_solicitada
                 ):
                     return
-                
+                self.ultimo_frame_stream = None
                 await self.stop_playback()
                 self.mode = "mp3"
                 self.current_mp3_index = payload
@@ -302,7 +300,6 @@ class ControlReproduccion:
                     self.manual_change = False
                     return
                 
-                await self.stop_playback()
                 tiempo_actual = self.estado_reproduccion.get("time", 0)
                 if tiempo_actual > 3:
                     # reinicia la pista actual
@@ -390,7 +387,7 @@ class ControlReproduccion:
             self.lcd_interface.display_image(img)
 
 
-    # funcion auxiliar. actuliza indices para play_current_mp3 y change_mp3
+    # funcion auxiliar. entrega pista actual
     def mp3_actual(self):
         try:
             return self.playback_queue[self.current_mp3_index]
@@ -403,6 +400,7 @@ class ControlReproduccion:
             return
         mp3_file = self.mp3_actual()
         if mp3_file:
+            self.ultimo_frame_stream = None
             try:
                 await self.stop_playback()
                 await asyncio.to_thread(self.mpv_player.play, mp3_file)
