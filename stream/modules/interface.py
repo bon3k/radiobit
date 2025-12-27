@@ -49,7 +49,7 @@ class InterfazLCD:
         GPIO.cleanup()
 
     def start_inactivity_monitor(self):
-        # crear la tarea de monitorización solo cuando se llame a este método
+        # crear la tarea de monitorizacion solo cuando se llame a este metodo
         asyncio.create_task(self.monitor_inactivity())
 
     async def monitor_inactivity(self):
@@ -133,7 +133,7 @@ class InterfazLCD:
 
     def update_battery_icon_only(self):
         """
-        Dibuja solo el icono de batería encima de la imagen actual.
+        Dibuja solo el icono de bateria encima de la imagen actual.
         """
         if self.current_image is None:
             return  # no hay imagen base para mostrar encima
@@ -145,8 +145,8 @@ class InterfazLCD:
         # dibujar el icono encima del fondo actual
         self.draw_battery_icon(draw)
 
-        # coordenadas del icono de bateria
-        x, y = 200, 10
+        # coordenadas icono bateria
+        x, y = 208, 8
         ancho = 25
         alto = 13
 
@@ -155,7 +155,7 @@ class InterfazLCD:
 
         icon_crop = icon_crop.rotate(180, expand=False)
 
-        # ajustar coordenadas segun la rotación
+        # ajustar coordenadas segun la rotacion
         x_rotado = 240 - (x + ancho)
         y_rotado = 240 - (y + alto)
 
@@ -172,7 +172,7 @@ class InterfazLCD:
 
 
     def draw_battery_icon(self, draw):
-        x, y = 200, 10  # posicion icono bateria
+        x, y = 208, 8  # coordenadas icono bateria
         ancho = 24
         alto = 12
         borde = 2
@@ -204,9 +204,9 @@ class InterfazLCD:
 
     def draw_volume_triangle(self, draw, volume_level):
 
-        # posicion base en la pantalla
-        x = 10
-        y = 10
+        # coordenadas base en la pantalla
+        x = 8
+        y = 8
         height = 14
         width = 8
 
@@ -306,6 +306,10 @@ class InterfazLCD:
 
         progreso = int((tiempo_actual / duracion) * 200) if duracion > 0 else 0
         img = self.draw_text_on_lcd(titulo, extra_info, progreso, volume_level)
+        self.display_image(img)
+
+    def show_black_screen(self):
+        img = Image.new("RGB", (self.width, self.height), (0, 0, 0))
         self.display_image(img)
 
     async def display_menu(self, opciones, seleccion_index, titulo=None):
