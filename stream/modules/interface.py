@@ -308,6 +308,19 @@ class InterfazLCD:
         img = self.draw_text_on_lcd(titulo, extra_info, progreso, volume_level)
         self.display_image(img)
 
+    def create_mp3_snapshot(self, titulo, tiempo_actual, duracion, volume_level=None):
+        """
+        Devuelve un Image de la pantalla MP3 sin mostrarlo.
+        """
+        titulo = titulo.replace('_', ' ').replace('-', ' ')
+        tiempo_str = f"{int(tiempo_actual // 60)}:{int(tiempo_actual % 60):02d}"
+        duracion_str = f"{int(duracion // 60)}:{int(duracion % 60):02d}"
+        extra_info = f"{tiempo_str} / {duracion_str}"
+        progreso = int((tiempo_actual / duracion) * 200) if duracion > 0 else 0
+
+        img = self.draw_text_on_lcd(titulo, extra_info, progreso, volume_level)
+        return img
+
     def show_black_screen(self):
         img = Image.new("RGB", (self.width, self.height), (0, 0, 0))
         self.display_image(img)

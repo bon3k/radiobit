@@ -46,7 +46,6 @@ class ControlReproduccion:
         self.current_mp3_index = 0
         self.current_stream = 0
         self.mode = "mp3"  # # arranca en modo mp3
-        self.is_paused = False
         self.estado_reproduccion = {"time": 0, "duration": 0}
         self.update_task = None
         self.ultimo_titulo = None  # # evita redibujar pantalla si el titulo no ha cambiado
@@ -117,7 +116,7 @@ class ControlReproduccion:
                 reason_str = str(reason_code)
 
             # solo avanzar si finalizo naturalmente
-            if self.mode == "mp3" and not self.is_paused and reason_str == 'eof':
+            if self.mode == "mp3" and reason_str == 'eof':
                 if self.loop and self.loop.is_running():
                     asyncio.run_coroutine_threadsafe(self.transition("NEXT_MP3"), self.loop)
 
@@ -231,7 +230,6 @@ class ControlReproduccion:
         self.playback_queue = self.playlists[playlist_index][1]
         self.current_mp3_index = track_index
         self.mode = "mp3"
-        self.is_paused = False
 
         await self.play_current_mp3()
 
@@ -263,7 +261,6 @@ class ControlReproduccion:
                 # si esta sonando exactamente esa pista, no hacer nada
                 if (
                     self.mode == "mp3"
-                    and not self.is_paused
                     and pista_actual is not None
                     and pista_actual == pista_solicitada
                 ):
@@ -272,7 +269,6 @@ class ControlReproduccion:
                 await self.stop_playback()
                 self.mode = "mp3"
                 self.current_mp3_index = payload
-                self.is_paused = False
                 await self.play_current_mp3()
 
 
@@ -362,7 +358,6 @@ class ControlReproduccion:
         stream_url = self.streams[stream_index].strip()
         await self.stop_playback()
         self.mode = "stream"
-        self.is_paused = False
         self.current_stream = stream_index
         # stream vacio
         if not stream_url:
@@ -375,6 +370,7 @@ class ControlReproduccion:
         
         try:
             await asyncio.to_thread(self.mpv_player.play, stream_url)
+            self.mpv_player.pause = False
             img = self.images.get(
                 stream_index,
                 "/home/radiobit/stream/data/stream-images/default.png"
@@ -404,6 +400,7 @@ class ControlReproduccion:
             try:
                 await self.stop_playback()
                 await asyncio.to_thread(self.mpv_player.play, mp3_file)
+                self.mpv_player.pause = False
             except Exception as e:
                 print(f"Error al reproducir mp3: {e}")
 
@@ -453,8 +450,7 @@ class ControlReproduccion:
 
     # pausa mpv
     async def toggle_pause(self):
-        await asyncio.to_thread(setattr, self.mpv_player, 'pause', not self.mpv_player.pause)
-        self.is_paused = self.mpv_player.pause
+        self.mpv_player.pause = not self.mpv_player.pause
 
 
     # volumen
@@ -511,16 +507,21 @@ class ControlReproduccion:
         """Refresca la pantalla segun el modo actual."""
         if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
             self.lcd_interface.display_image(self.ultimo_frame_stream)
+            self.lcd_interface.update_battery_icon_only()
         elif self.mode == "mp3":
             mp3_file = self.mp3_actual()
             if mp3_file:
                 titulo = os.path.basename(mp3_file)
-                self.lcd_interface.display_mp3_info(
+                img = self.lcd_interface.create_mp3_snapshot(
                     titulo,
                     self.estado_reproduccion.get("time", 0),
                     self.estado_reproduccion.get("duration", 0),
                     volume_level=int(self.estado_reproduccion.get("volume", 0))
                 )
+
+                self.lcd_interface.display_image(img)
+                self.ultimo_frame_mp3 = img
+            return
 
 
             ###### --------------- ALL MENU --------------- ######
@@ -573,6 +574,8 @@ class ControlReproduccion:
 
         self.en_menu = False
         await self.cerrar_menu_async()
+        self.refresh_display()
+
 
     # menu playlist
     async def seleccionar_playlist(self, leer_entrada):
@@ -633,10 +636,29 @@ class ControlReproduccion:
 
         self.en_menu = False
         await self.cerrar_menu_async()
+        self.refresh_display()
 
 
     # menu system
     async def menu_system(self, leer_entrada):
+        self.en_menu = True
+        was_paused = self.mpv_player.pause
+        self.frame_pause_snapshot = None
+
+        if was_paused:
+            if self.mode == "mp3":
+                mp3_file = self.mp3_actual()
+                if mp3_file:
+                    titulo = os.path.basename(mp3_file)
+                    self.frame_pause_snapshot = self.lcd_interface.create_mp3_snapshot(
+                        titulo,
+                        self.estado_reproduccion.get("time", 0),
+                        self.estado_reproduccion.get("duration", 0),
+                        volume_level=int(self.estado_reproduccion.get("volume", 0))
+                    )
+            elif self.mode == "stream":
+                self.frame_pause_snapshot = self.ultimo_frame_stream
+
         opciones = [
             "Resume Playback",
             "Repeat playlist: ON" if self.repetir_playlist else "Repeat playlist: OFF",
@@ -651,7 +673,6 @@ class ControlReproduccion:
         seleccion = 0
         total = len(opciones)
 
-        self.en_menu = True
 
         while True:
             # actualiza el texto segun el estado actual
