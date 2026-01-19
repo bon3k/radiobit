@@ -45,7 +45,7 @@ class ControlReproduccion:
         self.current_playlist = 0
         self.current_mp3_index = 0
         self.current_stream = 0
-        self.mode = "mp3"  # # arranca en modo mp3
+        self.mode = "idle"
         self.estado_reproduccion = {"time": 0, "duration": 0}
         self.update_task = None
         self.ultimo_titulo = None  # # evita redibujar pantalla si el titulo no ha cambiado
@@ -86,7 +86,7 @@ class ControlReproduccion:
         except Exception:
             pass
 
-        # Crear nuevo mpv: si video_enabled -> no pasa 'video'
+        # Crear nuevo objeto mpv
         if self.video_enabled:
             self.mpv_player = MPV(**common_kwargs)
         else:
@@ -115,7 +115,7 @@ class ControlReproduccion:
             else:
                 reason_str = str(reason_code)
 
-            # solo avanzar si finalizo naturalmente
+            # solo avanzar si termina naturalmente
             if self.mode == "mp3" and reason_str == 'eof':
                 if self.loop and self.loop.is_running():
                     asyncio.run_coroutine_threadsafe(self.transition("NEXT_MP3"), self.loop)
@@ -193,15 +193,11 @@ class ControlReproduccion:
 
             ###### --------------- INIT SYSTEM --------------- ######
 
-    # arranca el sistema: resuelve npub, prepara playlist/queue, empieza a reproducir y lanza update_loop
+    # arranca el sistema: resuelve npub, arranca en idle y lanza update_loop
     async def iniciar(self):
         self.loop = asyncio.get_running_loop()
         self.streams = await self.resolve_all_npubs(self.streams)
-        if self.playlists:
-            self.current_playlist = 0
-            self.current_mp3_index = 0
-            self.playback_queue = self.playlists[self.current_playlist][1]
-            await self.play_current_mp3()
+        await self.enter_idle()
         self.update_task = asyncio.create_task(self.update_loop())
 
 
@@ -217,10 +213,6 @@ class ControlReproduccion:
 
     # handle playlist/queue
     async def play_playlist(self, playlist_index, track_index=0):
-        """
-        Cambia de playlist de forma segura y reproduce pista.
-        ESTE es el unico sitio donde se toca playback_queue.
-        """
         if not (0 <= playlist_index < len(self.playlists)):
             return
 
@@ -246,7 +238,7 @@ class ControlReproduccion:
         try:
 
             if action == "PLAY_MP3":
-                # comprobar si la pista REAL es la misma que esta sonando
+                # comprobar si la pista real es la misma que esta sonando
                 pista_actual = self.mp3_actual()
 
                 pista_solicitada = (
@@ -283,9 +275,7 @@ class ControlReproduccion:
                     if self.repetir_playlist:
                         self.current_mp3_index = 0
                     else:
-                        # fin real de la cola
-                        self.current_mp3_index = len(self.playback_queue) - 1
-                        self.is_paused = True
+                        await self.enter_idle()
                         return
                     
                 await self.play_current_mp3()
@@ -345,8 +335,10 @@ class ControlReproduccion:
                     last_battery_update = now
                     self.lcd_interface.update_battery_icon_only()
 
+            elif self.mode == "idle":
+                continue
 
-    # detiene mpv (manejo interno)
+    # detiene mpv
     async def stop_playback(self):
         await asyncio.to_thread(self.mpv_player.stop)
 
@@ -365,6 +357,7 @@ class ControlReproduccion:
             img = self.lcd_interface.draw_text_on_lcd(
                 f"STREAM {stream_index + 1}/{len(self.streams)}\nOFFLINE"
             )
+            self.ultimo_frame_stream = img
             self.lcd_interface.display_image(img)
             return
         
@@ -431,6 +424,11 @@ class ControlReproduccion:
 
     # cambio manual mp3
     async def change_mp3(self, direction):
+        if self.mode == "idle":
+            if self.playlists:
+                await self.play_playlist(self.current_playlist, self.current_mp3_index)
+            return
+        
         if self.mode != "mp3" or not self.playback_queue:
             return
         
@@ -442,10 +440,34 @@ class ControlReproduccion:
 
     # cambio de modo stream/mp3
     async def toggle_mode(self):
-        if self.mode == "mp3":
+        if self.mode == "idle":
+            # prioridad: stream si existen, si no mp3
+            if self.streams:
+                await self.transition("PLAY_STREAM", self.current_stream)
+            elif self.playlists:
+                await self.play_playlist(self.current_playlist, self.current_mp3_index)
+                
+        elif self.mode == "mp3":
             await self.transition("PLAY_STREAM", self.current_stream)
-        else:
-            await self.transition("PLAY_MP3", self.current_mp3_index)
+            
+        elif self.mode == "stream":
+            if self.playlists:
+                await self.play_playlist(self.current_playlist, self.current_mp3_index)   
+
+
+    async def enter_idle(self):
+        await self.stop_playback()
+        self.mpv_player.pause = False
+        self.mode = "idle"
+        self.ultimo_titulo = None
+        self.playback_queue = []
+        self.current_mp3_index = 0
+
+        # pantalla idle
+        img = self.lcd_interface.draw_text_on_lcd(
+            "RADIOBIT"
+        )
+        self.lcd_interface.display_image(img)
 
 
     # pausa mpv
@@ -473,7 +495,6 @@ class ControlReproduccion:
 
     # reinicia mpv (video ON/OFF)
     def reboot_player(self):
-        """Recrea mpv en el proceso actual y reanuda la reproduccion"""
         # actualizar/crear mpv con la opcion actual
         self._create_mpv()
 
@@ -504,7 +525,6 @@ class ControlReproduccion:
         
 
     def refresh_display(self):
-        """Refresca la pantalla segun el modo actual."""
         if self.mode == "stream" and hasattr(self, "ultimo_frame_stream"):
             self.lcd_interface.display_image(self.ultimo_frame_stream)
             self.lcd_interface.update_battery_icon_only()
@@ -523,6 +543,14 @@ class ControlReproduccion:
                 self.ultimo_frame_mp3 = img
             return
 
+        elif self.mode == "idle":
+            img = getattr(self, "idle_image", None)
+            if img is None:
+                img = self.lcd_interface.draw_text_on_lcd("RADIOBIT")
+                self.idle_image = img
+
+            self.lcd_interface.display_image(img)
+            return
 
             ###### --------------- ALL MENU --------------- ######
 
@@ -667,7 +695,7 @@ class ControlReproduccion:
             "Refresh nostrbit",
             "Refresh playlists",
             "Play snake",
-            "Reboot",
+            "IDLE",
             "Shutdown"
         ]
         seleccion = 0
@@ -705,6 +733,7 @@ class ControlReproduccion:
                     self.video_enabled = config['video_enabled']
                     # recrear mpv con la nueva configuracion
                     self.reboot_player()
+                    self.refresh_display()
                     break
 
                 elif seleccion == 3:
@@ -769,12 +798,7 @@ class ControlReproduccion:
                 
                 elif seleccion == 7:
                     await self.cerrar_menu_async()
-                    img = self.lcd_interface.draw_text_on_lcd("Rebooting...")
-                    self.lcd_interface.display_image(img)
-                    await self.close()  # asegura cerrar streams
-                    os.system("sync")
-                    await asyncio.sleep(0.8)
-                    os.system("sudo reboot")
+                    await self.enter_idle()
                     break
                 
                 elif seleccion == 8:
