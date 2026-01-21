@@ -1,6 +1,6 @@
 # Radiobit
 
-DIY music and streaming player that supports a wide range of audio formats, internet radio, and Nostr streams. Powered by a Raspberry Pi Zero, it features a small LCD screen, physical buttons, and a PiSugar3 battery pack. A minimal web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
+A DIY music player for your own audio, internet radio, and Nostr streams. It runs on a Raspberry Pi Zero and comes with a small LCD screen, physical buttons, and a PiSugar3 battery pack. A simple web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
 
 ---
 
@@ -16,19 +16,8 @@ DIY music and streaming player that supports a wide range of audio formats, inte
 ## Build
 
 You can either:
-- Flash the SD card with the prebuilt image (recommended)
+- Flash the SD card with the prebuilt image
 - Or build it manually following the steps in [BUILD.md](./BUILD.md)
-
-## First boot
-
-On first boot, connect your Raspberry Pi to your router using an Ethernet-to-USB adapter.
-This one-time wired connection is required to access the web app at http://radiobit.local, where you can configure Wi-Fi (either your home network or your phone’s hotspot).
-Optionally, you can also add the Wi-Fi network using a keyboard and an HDMI display with the following commands:
-
-```bash
-nmcli device wifi list
-nmcli device wifi connect "MyNetwork" password "mypassword123"
-```
 
 ## Notes
 
