@@ -17,7 +17,6 @@ class InterfazLCD:
         self.CS_PIN = cs_pin
         self.spi = spidev.SpiDev()
         self.last_image_hash = None
-        self.ultimo_tiempo_mostrado = -1
         self.pisugar = sugarpie.Pisugar()
         self.last_input_time = time.time()
         self.inactive_timeout = 60  # segundos
@@ -293,9 +292,10 @@ class InterfazLCD:
     def display_mp3_info(self, titulo, tiempo_actual, duracion, volume_level=None):
         titulo = titulo.replace('_', ' ').replace('-', ' ')
 
-        if int(tiempo_actual) == self.ultimo_tiempo_mostrado:
+        key = (int(tiempo_actual), titulo, int(duracion), int(volume_level or 0))
+        if key == getattr(self, "_last_mp3_key", None):
             return
-        self.ultimo_tiempo_mostrado = int(tiempo_actual)
+        self._last_mp3_key = key
 
         lineas_titulo = self.split_text(titulo, max_length=17)
         titulo_procesado = "\n".join(lineas_titulo[:4])
