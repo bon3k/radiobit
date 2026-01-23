@@ -120,11 +120,10 @@ class ControlReproduccion:
                 if self.loop and self.loop.is_running():
                     asyncio.run_coroutine_threadsafe(self.transition("NEXT_MP3"), self.loop)
 
-        self.NPUB_RE = re.compile(r"^npub1[ac-hj-np-z02-9]{58}$")
+        self.NIP19_RE = re.compile(r"^(npub1|nprofile1)[ac-hj-np-z02-9]+$")
 
-
-    def _es_npub(self, texto: str) -> bool:
-        return bool(self.NPUB_RE.match(texto))
+    def _es_nip19(self, texto: str) -> bool:
+        return bool(self.NIP19_RE.match(texto))
 
 
             ###### --------------- LOAD DATA --------------- ######
@@ -132,7 +131,8 @@ class ControlReproduccion:
     async def resolve_all_npubs(self, entries):
         resolved = []
         for entry in entries:
-            if self._es_npub(entry):
+            entry = entry.strip()
+            if self._es_nip19(entry):
                 try:
                     url = await resolve_m3u8_async(entry)
                     resolved.append(url if url else "")
