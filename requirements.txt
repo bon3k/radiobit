@@ -9,4 +9,5 @@ smbus
 sugarpie
 websockets
 bech32
-
+python-pam
+six

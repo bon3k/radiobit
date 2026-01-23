@@ -1,19 +1,38 @@
-from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify
+from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
 import os
 import subprocess
 import shutil
 import urllib.parse
 import re
+import pam
+from functools import wraps
+
 
 app = Flask(__name__)
+app.secret_key = "kdjfsijfsio8dfu09esiohfcs89dfjicns87d9ficjshd6s5dty8siodjfmos89ds7hjvsuid"  # clave interna para sesiones de Flask
 
 BASE_DIR = "/home/radiobit/stream/data"
 FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
 VOLUME_FILE = os.path.expanduser("~/.config/wireplumber/wireplumber.conf.d/10-default-volume.conf")
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def check_system_user(username, password):
+    if username != "radiobit":
+        return False
+    p = pam.pam()
+    return p.authenticate(username, password)
+
+
 def list_connections():
     connections = []
-    result = subprocess.run(["sudo", "nmcli", "-t", "-f", "NAME,TYPE,STATE", "con"], capture_output=True, text=True)
+    result = subprocess.run(["sudo", "nmcli", "-t", "-f", "NAME,TYPE,STATE", "con"], capture_output=True, text=True, timeout=10)
     for line in result.stdout.splitlines():
         parts = line.split(":")
         if len(parts) == 3:
@@ -95,13 +114,37 @@ def update_m3u_on_delete(folder, filename):
             f.write(line.rstrip('\r\n') + "\n")
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if check_system_user(username, password):
+            session['user'] = username
+            return redirect(url_for('index'))
+        else:
+            flash("Invalid username or password")
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('login'))
+
+
+
 @app.route('/')
+@login_required
 def index():
     connections = list_connections()
     default_volume = get_default_volume()  # Leer valor actual
     return render_template('index.html', connections=connections, default_volume=default_volume)
 
 @app.route('/edit_file', methods=['GET', 'POST'])
+@login_required
 def edit_file():
     if request.method == 'POST':
         raw_links = request.form.to_dict(flat=True)
@@ -120,24 +163,27 @@ def edit_file():
 
 
 @app.route('/delete/<name>', methods=['POST'])
+@login_required
 def delete_connection(name):
-    subprocess.run(["sudo", "nmcli", "con", "delete", name])
+    subprocess.run(["sudo", "nmcli", "con", "delete", name], timeout=10)
     return redirect(url_for('index'))
 
 
 @app.route('/add', methods=['GET', 'POST'])
+@login_required
 def add_connection():
     if request.method == 'POST':
         ssid = request.form['ssid']
         password = request.form['password']
         if ssid and password:
-            subprocess.run(["sudo", "nmcli", "dev", "wifi", "connect", ssid, "password", password])
+            subprocess.run(["sudo", "nmcli", "dev", "wifi", "connect", ssid, "password", password], timeout=20)
         return redirect(url_for('index'))
     return render_template('add.html')
 
 
 @app.route('/file_manager/', defaults={'path': ''})
 @app.route('/file_manager/<path:path>')
+@login_required
 def file_manager(path):
     current_path = os.path.join(BASE_DIR, path)
     if not os.path.exists(current_path):
@@ -188,6 +234,7 @@ def file_manager(path):
 
 @app.route('/upload/', defaults={'path': ''}, methods=['POST'])
 @app.route('/upload/<path:path>', methods=['POST'])
+@login_required
 def upload_file(path):
     current_path = os.path.join(BASE_DIR, path)
 
@@ -207,6 +254,7 @@ def upload_file(path):
 
 
 @app.route('/download/<path:path>')
+@login_required
 def download_file(path):
     full_path = os.path.join(BASE_DIR, path)
     if os.path.exists(full_path):
@@ -215,6 +263,7 @@ def download_file(path):
 
 
 @app.route('/delete_file', methods=['POST'])
+@login_required
 def delete_file():
     path = request.args.get('path')
     if not path:
@@ -263,6 +312,7 @@ def get_default_volume():
 
 
 @app.route('/set_volume', methods=['POST'])
+@login_required
 def set_volume():
     try:
         vol = float(request.form.get("volume", 0.4))
@@ -270,11 +320,11 @@ def set_volume():
             return jsonify(success=False, error="Valor fuera de rango"), 400
 
         # Ejecutar script para modificar archivo
-        subprocess.run(["/home/radiobit/stream/set_volume.sh", str(vol)], check=True)
+        subprocess.run(["/home/radiobit/stream/set_volume.sh", str(vol)], check=True, timeout=5)
 
         return jsonify(success=True, volume=vol)
     except Exception as e:
         return jsonify(success=False, error=str(e)), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=2140, debug=True)
+    app.run()

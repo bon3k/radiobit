@@ -96,13 +96,14 @@ sudo apt install nginx -y
 sudo systemctl start nginx
 sudo systemctl enable nginx
 sudo cp radiobit.conf /etc/nginx/sites-available/
+sudo unlink /etc/nginx/sites-enabled/default
 sudo ln -s /etc/nginx/sites-available/radiobit.conf /etc/nginx/sites-enabled/
 ```
 
 ### 13. Install System Dependencies
 
 ```bash
-sudo apt install mpv libmpv-dev python3-pip pipewire pipewire-audio-client-libraries
+sudo apt install mpv libmpv-dev python3-pip pipewire pipewire-audio-client-libraries libpam0g-dev
 ```
 
 ### 14. Set Up Python Environment
