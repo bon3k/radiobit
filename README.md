@@ -21,10 +21,17 @@ You can either:
 
 ## Notes
 
-- Although it was designed for the **Raspberry Pi Zero 2W**, it can be built on any Raspberry Pi model as long as you use the same LCD HAT.
-- If your **music library is very large**, it is recommended to copy the files directly to the microSD card from your computer, rather than uploading them through the web app.
-- The web app is focused on handling Wi-Fi, playlists, radio links, and Nostr keys — not on heavy file management.
-- For best performance, use a high-quality microSD card (Class 10 or better).
+- Open the web app at http://radiobit.local on your network.
+Default login: radiobit / radiobit.
+- You can change the password by plugging a screen + keyboard into the Pi and running:
+
+```bash
+passwd
+```
+
+- Radiobit was designed for the Pi Zero 2W, but works on any Raspberry Pi with the same LCD HAT.
+- For big music libraries, copy files directly to the microSD instead of using the web app.
+- Use a good microSD card (Class 10+) for best performance.
 
 ## Controls
 
