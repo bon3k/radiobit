@@ -312,28 +312,63 @@ class ControlReproduccion:
     # refresh pantalla con el estado actual de reproduccion (pista, tiempo, bateria)
     async def update_loop(self):
         last_battery_update = 0
+
+        last_title = None
+        last_time = None
+        last_duration = None
+        last_volume = None
+        last_mode = None
+
         while True:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.2)
+
             if self.en_menu:
                 continue
-            
+
+            # Detectar cambio de modo
+            if self.mode != last_mode:
+                last_mode = self.mode
+                last_title = None
+                last_time = None
+                last_duration = None
+                last_volume = None
+
             if self.mode == "mp3":
                 actual = self.mp3_actual()
-                if actual:
-                    titulo_actual = os.path.basename(actual)
-                    if titulo_actual != self.ultimo_titulo:
-                        self.ultimo_titulo = titulo_actual
-                    self.lcd_interface.display_mp3_info(
-                        self.ultimo_titulo,
-                        self.estado_reproduccion["time"],
-                        self.estado_reproduccion["duration"],
-                        volume_level=int(self.estado_reproduccion["volume"])
+                if not actual:
+                    continue
+
+                titulo_actual = os.path.basename(actual)
+                tiempo = self.estado_reproduccion.get("time", 0)
+                duracion = self.estado_reproduccion.get("duration", 0)
+                volumen = int(self.estado_reproduccion.get("volume", 0))
+
+                # Redibujar solo si algo cambió
+                if (
+                    titulo_actual != last_title
+                    or tiempo != last_time
+                    or duracion != last_duration
+                    or volumen != last_volume
+                ):
+                    last_title = titulo_actual
+                    last_time = tiempo
+                    last_duration = duracion
+                    last_volume = volumen
+
+                    await asyncio.to_thread(
+                        self.lcd_interface.display_mp3_info,
+                        titulo_actual,
+                        tiempo,
+                        duracion,
+                        volume_level=volumen
                     )
+
+
             elif self.mode == "stream":
                 now = time.time()
                 if now - last_battery_update > 10:
                     last_battery_update = now
-                    self.lcd_interface.update_battery_icon_only()
+                    await asyncio.to_thread(self.lcd_interface.update_battery_icon_only)
 
             elif self.mode == "idle":
                 continue
