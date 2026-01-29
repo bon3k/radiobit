@@ -87,6 +87,7 @@ chmod +x /home/radiobit/stream/set_volume.sh
 ```bash
 sudo cp stream.service /etc/systemd/system/
 sudo cp gunicorn.service /etc/systemd/system/
+sudo cp 49-nm-wifi-scan.rules /etc/polkit-1/rules.d/
 ```
 
 ### 12. Install and Configure Nginx

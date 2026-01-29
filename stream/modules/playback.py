@@ -853,6 +853,184 @@ class ControlReproduccion:
         self.en_menu = False
         await self.cerrar_menu_async()
 
+
+
+    async def _menu_wifi(self, leer_entrada):
+        await self.cerrar_menu_async()
+        self.en_menu = True
+
+        img = self.lcd_interface.draw_text_on_lcd("Scanning...")
+        self.lcd_interface.display_image(img)
+        await asyncio.sleep(0.5)
+
+        os.system("nmcli device wifi rescan")
+        await asyncio.sleep(3)
+
+        redes_raw = os.popen(
+            "nmcli -t -f SSID,SIGNAL device wifi list"
+        ).read().strip().splitlines()
+
+        if not redes_raw:
+            img = self.lcd_interface.draw_text_on_lcd("No networks found")
+            self.lcd_interface.display_image(img)
+            await asyncio.sleep(1.5)
+            self.en_menu = False
+            self.refresh_display()
+            return
+
+        redes = []
+        for r in redes_raw:
+            ssid, *signal = r.split(":")
+            signal = signal[0] if signal else "?"
+            redes.append(f"{ssid[:14]:14} {signal:>3}%")
+
+        cursor_index = 0
+        ventana_size = 8
+        offset = 0
+
+        while True:
+            if cursor_index < offset:
+                offset = cursor_index
+            elif cursor_index >= offset + ventana_size:
+                offset = cursor_index - ventana_size + 1
+
+            lineas = []
+            for i in range(offset, min(offset + ventana_size, len(redes))):
+                prefijo = "> " if i == cursor_index else "  "
+                lineas.append(prefijo + redes[i])
+
+            titulo = f"Wi-Fi {cursor_index+1}/{len(redes)}"
+            await self.mostrar_menu_async(
+                lineas,
+                cursor_index - offset,
+                titulo=titulo
+            )
+
+            entrada = await leer_entrada()
+
+            if entrada == "abajo":
+                cursor_index = (cursor_index + 1) % len(redes)
+            elif entrada == "arriba":
+                cursor_index = (cursor_index - 1) % len(redes)
+            elif entrada == "enter":
+                ssid = redes_raw[cursor_index].split(":")[0]
+                await self.conectar_wifi(ssid, leer_entrada)
+                break
+            elif entrada == "volver":
+                break
+
+        self.en_menu = False
+        await self.cerrar_menu_async()
+        self.refresh_display()
+
+
+
+    async def conectar_wifi(self, ssid, leer_entrada):
+        await self.cerrar_menu_async()
+        self.en_menu = True
+
+        img = self.lcd_interface.draw_text_on_lcd(f"Connecting\n{ssid}")
+        self.lcd_interface.display_image(img)
+
+        if self.existing_wifi_connection(ssid):
+            # intentar levantar la conexión existente
+            result = os.popen(f'sudo nmcli connection up "{ssid}"').read().lower()
+            if "successfully activated" in result or "activated" in result:
+                img = self.lcd_interface.draw_text_on_lcd("Connected!")
+                self.lcd_interface.display_image(img)
+                await asyncio.sleep(1.5)
+                self.en_menu = False
+                await self.cerrar_menu_async()
+                self.refresh_display()
+                return
+            else:
+                # si falla levantarla, borramos la conexión previa para rehacerla
+                os.system(f'sudo nmcli connection delete "{ssid}"')
+
+        # pedir contraseña
+        password = await self.input_text(leer_entrada, titulo=f"{ssid} Password", oculto=False)
+        if not password:
+            self.en_menu = False
+            self.refresh_display()
+            return
+
+        # crear la conexión de cero
+        os.system(f'sudo nmcli device wifi connect "{ssid}" password "{password}"')
+        os.system(f'sudo nmcli connection modify "{ssid}" connection.permissions "" connection.system yes')
+
+        # intentar levantarla
+        result = os.popen(f'sudo nmcli connection up "{ssid}"').read().lower()
+        if "successfully activated" in result or "activated" in result:
+            img = self.lcd_interface.draw_text_on_lcd("Connected!")
+        else:
+            img = self.lcd_interface.draw_text_on_lcd("Connection failed")
+        self.lcd_interface.display_image(img)
+        await asyncio.sleep(1.5)
+
+        self.en_menu = False
+        self.refresh_display()
+
+
+    def existing_wifi_connection(self, ssid):
+        try:
+            # Solo obtenemos NAME y TYPE
+            out = os.popen("nmcli -t -f NAME,TYPE connection show").read().splitlines()
+
+            for line in out:
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    name, typ = parts[0], parts[1]
+                    # Para Wi-Fi, el NAME suele ser el SSID
+                    if typ == "wifi" and name == ssid:
+                        return True
+        except Exception:
+            pass
+
+        return False
+
+
+
+    async def input_text(self, leer_entrada, titulo="Input", max_len=32, oculto=False):
+        chars = list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_@.")
+        idx = 0
+        texto = []
+
+        self.en_menu = True
+
+        while True:
+            linea = "".join("*" if oculto else c for c in texto)
+            cursor = chars[idx]
+
+            display = [
+                linea[:16],
+                ("^ " + cursor)[:16]
+            ]
+
+            await self.mostrar_menu_async(display, 1, titulo=titulo)
+
+            entrada = await leer_entrada()
+
+            if entrada == "arriba":
+                idx = (idx + 1) % len(chars)
+            elif entrada == "abajo":
+                idx = (idx - 1) % len(chars)
+            elif entrada == "enter":
+                if len(texto) < max_len:
+                    texto.append(chars[idx])
+            elif entrada == "enter_long":
+                return "".join(texto)
+            elif entrada == "extra":  # usar KEY extra como borrar
+                if texto:
+                    texto.pop()
+            elif entrada == "volver":
+                return None
+            elif entrada is None:
+                break
+
+        return "".join(texto)
+
+
+
     # bucle asincrono dentro del menu (scroll texto)
     async def mostrar_menu_async(self, opciones, seleccion_index, titulo=None):
         # cancela tarea previa si existe
