@@ -729,6 +729,7 @@ class ControlReproduccion:
             "ReplayGain: " + self.replaygain_mode.upper(),
             "Refresh nostrbit",
             "Refresh playlists",
+            "Scan Wi-Fi",
             "Play snake",
             "IDLE",
             "Shutdown"
@@ -824,6 +825,10 @@ class ControlReproduccion:
                     break
 
                 elif seleccion == 6:
+                    await self._menu_wifi(leer_entrada)
+                    break 
+
+                elif seleccion == 7:
                     from modules.snake_game import run_snake
                     await self.cerrar_menu_async()
                     await run_snake(self.lcd_interface)
@@ -831,12 +836,12 @@ class ControlReproduccion:
                     self.refresh_display()
                     break
                 
-                elif seleccion == 7:
+                elif seleccion == 8:
                     await self.cerrar_menu_async()
                     await self.enter_idle()
                     break
                 
-                elif seleccion == 8:
+                elif seleccion == 9:
                     await self.cerrar_menu_async()
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
                     self.lcd_interface.display_image(img)
