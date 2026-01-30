@@ -388,6 +388,7 @@ class ControlReproduccion:
         self.current_stream = stream_index
         # stream vacio
         if not stream_url:
+            await self.stop_playback()
             self.current_stream = stream_index  # marcar indice actual
             img = self.lcd_interface.draw_text_on_lcd(
                 f"STREAM {stream_index + 1}/{len(self.streams)}\nOFFLINE"
@@ -427,6 +428,7 @@ class ControlReproduccion:
             self.ultimo_frame_stream = None
             try:
                 await self.stop_playback()
+                await asyncio.sleep(0.05)
                 await asyncio.to_thread(self.mpv_player.play, mp3_file)
                 self.mpv_player.pause = False
             except Exception as e:
@@ -1029,8 +1031,6 @@ class ControlReproduccion:
                     texto.pop()
             elif entrada == "volver":
                 return None
-            elif entrada is None:
-                break
 
         return "".join(texto)
 

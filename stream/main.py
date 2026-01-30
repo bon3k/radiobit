@@ -75,6 +75,15 @@ async def leer_entrada_menu():
             return "abajo"
         if not GPIO.input(JOYSTICK_PRESS_PIN):
             interfaz_lcd.update_activity()
+            press_start = asyncio.get_event_loop().time()
+
+            while not GPIO.input(JOYSTICK_PRESS_PIN):
+                if asyncio.get_event_loop().time() - press_start > 0.6:
+                    await asyncio.sleep(0.2)
+                    return "enter_long"
+                await asyncio.sleep(0.05)
+
+
             await asyncio.sleep(0.2)
             return "enter"
         if not GPIO.input(JOYSTICK_UP_PIN):
