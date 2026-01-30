@@ -502,7 +502,7 @@ class ControlReproduccion:
 
         # pantalla idle
         img = self.lcd_interface.draw_text_on_lcd(
-            "RADIOBIT"
+            "(o_o)"
         )
         self.lcd_interface.display_image(img)
 
@@ -583,7 +583,7 @@ class ControlReproduccion:
         elif self.mode == "idle":
             img = getattr(self, "idle_image", None)
             if img is None:
-                img = self.lcd_interface.draw_text_on_lcd("RADIOBIT")
+                img = self.lcd_interface.draw_text_on_lcd("(o_o)")
                 self.idle_image = img
 
             self.lcd_interface.display_image(img)
