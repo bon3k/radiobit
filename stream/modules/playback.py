@@ -59,6 +59,9 @@ class ControlReproduccion:
         config = cargar_config()
         self.video_enabled = config.get("video_enabled", False)  # video desactivado por defecto
         self.replaygain_mode = config.get("replaygain_mode", "track")
+        self.ultimo_frame_stream = None
+        self.ultimo_frame_mp3 = None
+        self.idle_image = None
         self._create_mpv()  # crear el objeto mpv segun config.json
 
 
@@ -627,7 +630,7 @@ class ControlReproduccion:
             elif entrada == "arriba":
                 indice = (indice - 1) % total
             elif entrada == "enter":
-                if self.current_playlist != playlist_index:
+                if self.mode != "mp3" or not self.playback_queue or self.current_playlist != playlist_index:
                     await self.play_playlist(playlist_index, indice)
                 else:
                     await self.transition("PLAY_MP3", indice)
@@ -680,7 +683,7 @@ class ControlReproduccion:
             elif entrada == "abajo":
                 cursor_index = (cursor_index + 1) % total
             elif entrada == "enter":
-                if self.current_playlist != cursor_index:
+                if self.mode != "mp3" or not self.playback_queue or self.current_playlist != cursor_index:
                     await self.play_playlist(cursor_index, 0)
                 break
             elif entrada == "extra":

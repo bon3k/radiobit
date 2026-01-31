@@ -125,7 +125,7 @@ async def main_loop():
             else:
                 interfaz_lcd.update_activity()
                 await asyncio.sleep(debounce_time)
-                if control_reproduccion.mode == "mp3":
+                if control_reproduccion.mode in ("mp3", "idle"):
                     in_menu = True
                     await control_reproduccion.seleccionar_playlist(leer_entrada_menu)
                     in_menu = False
