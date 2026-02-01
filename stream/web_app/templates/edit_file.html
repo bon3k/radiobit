@@ -48,7 +48,7 @@
         function addField() {
             var container = document.getElementById('link-container');
             var fields = container.getElementsByClassName('link-field');
-            var newIndex = fields.length; // El nuevo índice será el siguiente disponible
+            var newIndex = fields.length + 1;
 
             var newField = document.createElement('div');
             newField.classList.add('input-group', 'mb-2', 'link-field');

@@ -148,7 +148,12 @@ def index():
 def edit_file():
     if request.method == 'POST':
         raw_links = request.form.to_dict(flat=True)
-        new_links = [raw_links[key].strip() for key in sorted(raw_links) if "links[" in key and raw_links[key].strip()]
+        new_links = [
+            raw_links[key].strip()
+            for key in sorted(raw_links, key=lambda k: int(k.split("[")[1].split("]")[0]))
+            if "links[" in key and raw_links[key].strip()
+        ]
+
         with open(FILE_PATH, 'w') as f:
             f.write("\n".join(new_links))
         return redirect(url_for('index'))
@@ -159,7 +164,7 @@ def edit_file():
     except FileNotFoundError:
         content = []
 
-    return render_template('edit_file.html', links=list(enumerate(content)))
+    return render_template('edit_file.html', links=list(enumerate(content, start=1)))
 
 
 @app.route('/delete/<name>', methods=['POST'])

@@ -158,8 +158,10 @@ class ControlReproduccion:
         for img_file in os.listdir(directory):
             if img_file.endswith((".png", ".jpg", ".jpeg")):
                 try:
-                    index = int(os.path.splitext(img_file)[0].split("_")[0])
-                    images[index] = os.path.join(directory, img_file)
+                    num = int(os.path.splitext(img_file)[0].split("_")[0])
+                    index = num - 1
+                    if index >= 0:
+                        images[index] = os.path.join(directory, img_file)
                 except ValueError:
                     continue
         return images
