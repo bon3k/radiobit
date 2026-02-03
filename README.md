@@ -1,6 +1,6 @@
 # Radiobit
 
-A DIY music player for your own audio, internet radio, and Nostr streams. It runs on a Raspberry Pi Zero and comes with a small LCD screen, physical buttons, and a PiSugar3 battery pack. A simple web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
+A DIY music player for your own audio, internet radio, and Nostr streams. It runs on a Raspberry Pi Zero 2 and comes with a small LCD screen, physical buttons, and a PiSugar3 battery pack. A simple web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
 
 ---
 
@@ -15,7 +15,7 @@ A DIY music player for your own audio, internet radio, and Nostr streams. It run
 
 ## Build
 
-You can either:
+You can:
 - Flash the SD card with the prebuilt image
 - Or build it manually following the steps in [BUILD.md](./BUILD.md)
 
@@ -28,8 +28,10 @@ Default login: radiobit / radiobit.
 ```bash
 passwd
 ```
-
-- Radiobit was designed for the Pi Zero 2W, but works on any Raspberry Pi with the same LCD HAT.
+- There is also a PiSugar web app available at http://radiobit.local:8421.
+The default user is `admin` and it has no password.
+You can change both from the PiSugar web interface.
+- The player was designed for the Pi Zero 2W, but works on any Raspberry Pi with the same LCD HAT.
 - For big music libraries, copy files directly to the microSD instead of using the web app.
 - Use a good microSD card (Class 10+) for best performance.
 
@@ -43,6 +45,7 @@ passwd
 | **KEY3 (short press)**                | Track menu                                               |
 | **KEY3 (Long press)**                 | System menu                                              |
 | **Joystick (press)**                  | Confirm selection / pause                                |
+| **Joystick (long press)**             | Confirm wifi password                                    |
 | **Joystick (directions)**             | Navigate menus / change track / volume / move in game    |
 | **KEY2 (short press, in game)**       | Restart game                                             |
 | **KEY3 (short press, in game)**       | Quit game                                                |
