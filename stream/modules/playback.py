@@ -617,7 +617,7 @@ class ControlReproduccion:
 
             lineas = []
             for i in range(offset, min(offset + ventana_size, total)):
-                nombre = os.path.basename(playlist[i]).replace("_", " ").replace(".mp3", "")
+                nombre = os.path.basename(playlist[i]).replace("_", " ")
                 prefijo = "> " if i == indice else "  "
                 reproduciendo = "* " if (self.current_playlist == playlist_index and i == self.current_mp3_index) else ""
 
