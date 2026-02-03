@@ -14,7 +14,17 @@
     <div class="container mt-4">
         <h1>file manager</h1>
         <p>current directory: <strong>{{ current_path }}</strong></p>
-        
+
+        {% if has_audio or has_m3u %}
+        <div class="mb-3">
+            <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
+
+            {% if has_m3u %}
+                <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if parent_path %}
             <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary">⬆</a>
         {% endif %}
@@ -77,6 +87,37 @@
                             console.error("Error en la solicitud:", error);
                             alert("Error de red o del servidor.");
                         });
+                }
+            });
+        });
+
+        // --- Playlist actions ---
+        document.getElementById("recreateBtn")?.addEventListener("click", () => {
+            fetch("/recreate_m3u", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: "path={{ current_path }}"
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert("Playlist recreated (" + d.tracks + " tracks)");
+                    location.reload();
+                }
+            });
+        });
+
+        document.getElementById("shuffleBtn")?.addEventListener("click", () => {
+            fetch("/shuffle_m3u", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: "path={{ current_path }}"
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert("Playlist shuffled");
+                    location.reload();
                 }
             });
         });

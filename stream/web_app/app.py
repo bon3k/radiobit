@@ -6,7 +6,7 @@ import urllib.parse
 import re
 import pam
 from functools import wraps
-
+import random
 
 app = Flask(__name__)
 app.secret_key = "kdjfsijfsio8dfu09esiohfcs89dfjicns87d9ficjshd6s5dty8siodjfmos89ds7hjvsuid"  # clave interna para sesiones de Flask
@@ -14,6 +14,8 @@ app.secret_key = "kdjfsijfsio8dfu09esiohfcs89dfjicns87d9ficjshd6s5dty8siodjfmos8
 BASE_DIR = "/home/radiobit/stream/data"
 FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
 VOLUME_FILE = os.path.expanduser("~/.config/wireplumber/wireplumber.conf.d/10-default-volume.conf")
+
+AUDIO_EXTS = ('.mp3', '.flac', '.ogg', '.wav', '.aac', '.m4a', '.aif', '.aiff')
 
 def login_required(f):
     @wraps(f)
@@ -29,6 +31,65 @@ def check_system_user(username, password):
     p = pam.pam()
     return p.authenticate(username, password)
 
+def list_audio_files(folder):
+    files = []
+    for f in sorted(os.listdir(folder)):
+        if f.lower().endswith(AUDIO_EXTS) and os.path.isfile(os.path.join(folder, f)):
+            files.append(f)
+    return files
+
+def recreate_m3u(folder):
+    dirname = os.path.basename(folder.rstrip("/"))
+    m3u_path = os.path.join(folder, f"{dirname}.m3u")
+
+    tracks = list_audio_files(folder)
+
+    with open(m3u_path, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for track in tracks:
+            title = os.path.splitext(track)[0]
+            encoded = urllib.parse.quote(track)
+            f.write(f"#EXTINF:-1,{title}\n")
+            f.write(f"{encoded}\n")
+
+    return m3u_path, len(tracks)
+
+def shuffle_m3u(folder):
+    m3u_path = None
+    for item in os.listdir(folder):
+        if item.lower().endswith(".m3u"):
+            m3u_path = os.path.join(folder, item)
+            break
+
+    if not m3u_path:
+        return False, "No playlist found"
+
+    entries = []
+    with open(m3u_path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith("#EXTINF"):
+            if i + 1 < len(lines):
+                entries.append((lines[i], lines[i+1]))
+                i += 2
+            else:
+                i += 1
+        elif lines[i].startswith("#"):
+            i += 1
+        else:
+            i += 1
+
+    random.shuffle(entries)
+
+    with open(m3u_path, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for extinf, path in entries:
+            f.write(extinf + "\n")
+            f.write(path + "\n")
+
+    return True, len(entries)
 
 def list_connections():
     connections = []
@@ -193,6 +254,18 @@ def file_manager(path):
     current_path = os.path.join(BASE_DIR, path)
     if not os.path.exists(current_path):
         return "Ruta no encontrada", 404
+    
+    has_audio = False
+    for item in os.listdir(current_path):
+        if item.lower().endswith(AUDIO_EXTS):
+            has_audio = True
+            break
+
+    has_m3u = False
+    for item in os.listdir(current_path):
+        if item.lower().endswith('.m3u'):
+            has_m3u = True
+            break
 
     # Buscar el primer archivo .m3u de la carpeta actual
     m3u_path = None
@@ -234,7 +307,15 @@ def file_manager(path):
             ordered_items.append(entries[name])
 
     parent_path = "" if current_path == BASE_DIR else os.path.relpath(os.path.dirname(current_path), BASE_DIR)
-    return render_template("file_manager.html", items=ordered_items, current_path=path, parent_path=parent_path)
+
+    return render_template(
+        "file_manager.html",
+        items=ordered_items,
+        current_path=path,
+        parent_path=parent_path,
+        has_audio=has_audio,
+        has_m3u=has_m3u
+    )
 
 
 @app.route('/upload/', defaults={'path': ''}, methods=['POST'])
@@ -314,6 +395,31 @@ def get_default_volume():
         pass
 
     return 0.4
+
+@app.route('/recreate_m3u', methods=['POST'])
+@login_required
+def recreate_m3u_route():
+    path = request.form.get("path", "")
+    folder = os.path.join(BASE_DIR, path)
+
+    if not os.path.isdir(folder):
+        return jsonify(success=False)
+
+    m3u_path, count = recreate_m3u(folder)
+    return jsonify(success=True, tracks=count)
+
+@app.route('/shuffle_m3u', methods=['POST'])
+@login_required
+def shuffle_m3u_route():
+    path = request.form.get("path", "")
+    folder = os.path.join(BASE_DIR, path)
+
+    ok, result = shuffle_m3u(folder)
+
+    if not ok:
+        return jsonify(success=False, error=result)
+
+    return jsonify(success=True, tracks=result)
 
 
 @app.route('/set_volume', methods=['POST'])
