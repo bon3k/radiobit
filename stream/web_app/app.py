@@ -1,5 +1,6 @@
 from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
 import os
+import secrets
 import subprocess
 import shutil
 import urllib.parse
@@ -9,7 +10,17 @@ from functools import wraps
 import random
 
 app = Flask(__name__)
-app.secret_key = "kdjfsijfsio8dfu09esiohfcs89dfjicns87d9ficjshd6s5dty8siodjfmos89ds7hjvsuid"  # clave interna para sesiones de Flask
+
+SECRET_FILE = "/home/radiobit/stream/secret_key.txt"
+
+if os.path.exists(SECRET_FILE):
+    with open(SECRET_FILE, "r") as f:
+        app.secret_key = f.read().strip()
+else:
+    app.secret_key = secrets.token_hex(32)
+    with open(SECRET_FILE, "w") as f:
+        f.write(app.secret_key)
+    os.chmod(SECRET_FILE, 0o600)
 
 BASE_DIR = "/home/radiobit/stream/data"
 FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
