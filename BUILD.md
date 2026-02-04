@@ -62,7 +62,7 @@ bash pisugar-power-manager.sh -c release
 ### 8. Install git and clone the repository
 
 ```bash
-sudo apt install git
+sudo apt install git -y
 git clone https://github.com/bon3k/radiobit.git
 cd radiobit
 ```
@@ -104,7 +104,7 @@ sudo ln -s /etc/nginx/sites-available/radiobit.conf /etc/nginx/sites-enabled/
 ### 13. Install System Dependencies
 
 ```bash
-sudo apt install mpv libmpv-dev python3-pip pipewire pipewire-audio-client-libraries libpam0g-dev
+sudo apt install mpv libmpv-dev python3-pip pipewire pipewire-audio-client-libraries libpam0g-dev -y
 ```
 
 ### 14. Set Up Python Environment
@@ -120,7 +120,6 @@ pip install -r requirements.txt
 ```bash
 sudo systemctl enable stream.service
 sudo systemctl enable gunicorn.service
-sudo systemctl restart nginx
 sudo reboot
 ```
 
