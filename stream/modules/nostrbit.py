@@ -22,8 +22,8 @@ DEFAULT_RELAYS = [
 ]
 
 STREAM_KINDS = [30311, 30312]
-RELAY_TIMEOUT = 3.0
-GLOBAL_TIMEOUT = 5.0
+RELAY_TIMEOUT = 8.0
+GLOBAL_TIMEOUT = 15.0
 
 
 
@@ -173,10 +173,27 @@ def _cache_key(identifier: str) -> str:
     return identifier
 
 
+# NETWORK CHECK
+
+async def has_internet_async(timeout=2) -> bool:
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection("1.1.1.1", 443),
+            timeout
+        )
+        writer.close()
+        await writer.wait_closed()
+        return True
+    except Exception:
+        return False
+
 
 # RESOLVE
 
 async def resolve_m3u8_async(identifier: str) -> Optional[str]:
+    if not await has_internet_async():
+        return None
+    
     pointer = decode_nip19(identifier)
     if not pointer.pubkey:
         return None
