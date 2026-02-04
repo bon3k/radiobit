@@ -28,6 +28,7 @@ VOLUME_FILE = os.path.expanduser("~/.config/wireplumber/wireplumber.conf.d/10-de
 
 AUDIO_EXTS = ('.mp3', '.flac', '.ogg', '.wav', '.aac', '.m4a', '.aif', '.aiff')
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -36,11 +37,13 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 def check_system_user(username, password):
     if username != "radiobit":
         return False
     p = pam.pam()
     return p.authenticate(username, password)
+
 
 def list_audio_files(folder):
     files = []
@@ -48,6 +51,7 @@ def list_audio_files(folder):
         if f.lower().endswith(AUDIO_EXTS) and os.path.isfile(os.path.join(folder, f)):
             files.append(f)
     return files
+
 
 def recreate_m3u(folder):
     dirname = os.path.basename(folder.rstrip("/"))
@@ -64,6 +68,7 @@ def recreate_m3u(folder):
             f.write(f"{encoded}\n")
 
     return m3u_path, len(tracks)
+
 
 def shuffle_m3u(folder):
     m3u_path = None
@@ -102,6 +107,7 @@ def shuffle_m3u(folder):
 
     return True, len(entries)
 
+
 def list_connections():
     connections = []
     result = subprocess.run(["sudo", "nmcli", "-t", "-f", "NAME,TYPE,STATE", "con"], capture_output=True, text=True, timeout=10)
@@ -112,6 +118,7 @@ def list_connections():
             if name != "lo":
                 connections.append({"name": name, "type": type_, "state": state})
     return connections
+
 
 def update_m3u_on_add(folder, filename):
     """Añadir una pista al final del .m3u de la carpeta, si existe."""
@@ -142,6 +149,7 @@ def update_m3u_on_add(folder, filename):
         extinf_line = f"#EXTINF:-1,{os.path.splitext(filename)[0]}"
         with open(m3u_path, 'a', encoding='utf-8') as f:
             f.write(f"{extinf_line}\n{encoded_name}\n")
+
 
 def update_m3u_on_delete(folder, filename):
     """Eliminar una pista del .m3u de la carpeta, si existe."""
@@ -207,13 +215,13 @@ def logout():
     return redirect(url_for('login'))
 
 
-
 @app.route('/')
 @login_required
 def index():
     connections = list_connections()
     default_volume = get_default_volume()  # Leer valor actual
     return render_template('index.html', connections=connections, default_volume=default_volume)
+
 
 @app.route('/edit_file', methods=['GET', 'POST'])
 @login_required
@@ -250,12 +258,65 @@ def delete_connection(name):
 @login_required
 def add_connection():
     if request.method == 'POST':
-        ssid = request.form['ssid']
-        password = request.form['password']
-        if ssid and password:
-            subprocess.run(["sudo", "nmcli", "dev", "wifi", "connect", ssid, "password", password], timeout=20)
+        ssid = request.form['ssid'].strip()
+        password = request.form['password'].strip()
+
+        if not ssid or not password:
+            flash("SSID and password required")
+            return redirect(url_for('add_connection'))
+
+        try:
+            subprocess.run(
+                ["sudo", "nmcli", "con", "add",
+                 "type", "wifi",
+                 "ifname", "wlan0",
+                 "con-name", ssid,
+                 "ssid", ssid],
+                check=True, timeout=10
+            )
+
+            subprocess.run(
+                ["sudo", "nmcli", "con", "modify", ssid,
+                 "wifi-sec.key-mgmt", "wpa-psk"],
+                check=True, timeout=10
+            )
+
+            subprocess.run(
+                ["sudo", "nmcli", "con", "modify", ssid,
+                 "wifi-sec.psk", password],
+                check=True, timeout=10
+            )
+
+            subprocess.run(
+                ["sudo", "nmcli", "con", "modify", ssid,
+                 "connection.autoconnect", "yes"],
+                check=True, timeout=10
+            )
+
+            flash(f"Connection '{ssid}' saved")
+
+        except subprocess.CalledProcessError as e:
+            flash(f"Error saving connection: {e}")
+
         return redirect(url_for('index'))
+
     return render_template('add.html')
+
+
+@app.route('/connect/<name>', methods=['POST'])
+@login_required
+def connect_connection(name):
+    try:
+        subprocess.run(
+            ["sudo", "nmcli", "con", "up", name],
+            check=True,
+            timeout=20
+        )
+        flash(f"Connecting to '{name}'...")
+    except subprocess.CalledProcessError as e:
+        flash(f"Error connecting to {name}: {e}")
+
+    return redirect(url_for('index'))
 
 
 @app.route('/file_manager/', defaults={'path': ''})

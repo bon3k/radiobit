@@ -59,8 +59,20 @@
                     <td>{{ conn.type }}</td>
                     <td>{{ conn.state }}</td>
                     <td>
-                        <form method="POST" action="{{ url_for('delete_connection', name=conn.name) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-danger">✗</button>
+                        {% if conn.state != "activated" %}
+                            <form method="POST"
+                                  action="{{ url_for('connect_connection', name=conn.name) }}"
+                                  style="display:inline;">
+                                <button type="submit" class="btn btn-primary btn-sm">►</button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-success btn-sm" disabled>✔</button>
+                        {% endif %}
+
+                        <form method="POST"
+                              action="{{ url_for('delete_connection', name=conn.name) }}"
+                              style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">✗</button>
                         </form>
                     </td>
                 </tr>
