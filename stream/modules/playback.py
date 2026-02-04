@@ -1014,8 +1014,8 @@ class ControlReproduccion:
             cursor = chars[idx]
 
             display = [
-                linea[:16],
-                ("^ " + cursor)[:16]
+                linea[-20:],
+                ("^ " + cursor)[-20:]
             ]
 
             await self.mostrar_menu_async(display, 1, titulo=titulo)
