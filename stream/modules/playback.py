@@ -169,7 +169,11 @@ class ControlReproduccion:
 
     def load_playlists(self, mp3_directory):
         playlists = []
-        formatos_validos = (".mp3", ".flac", ".ogg", ".wav", ".aac", ".m4a", ".aiff", ".aif")
+        formatos_validos = (
+            ".mp3", ".flac", ".ogg", ".wav", ".aac", ".m4a", ".aiff", ".aif",  # audio
+            ".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv"                       # video
+        )
+
         for root, dirs, files in sorted(os.walk(mp3_directory), key=lambda x: x[0]):
             archivos_m3u = [f for f in files if f.endswith('.m3u')]
             if archivos_m3u:
