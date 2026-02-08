@@ -295,8 +295,10 @@ class ControlReproduccion:
                     self.manual_change = False
                     return
                 
+                RESTART_THRESHOLD = 3
+                
                 tiempo_actual = self.estado_reproduccion.get("time", 0)
-                if tiempo_actual > 3:
+                if tiempo_actual > RESTART_THRESHOLD:
                     # reinicia la pista actual
                     await self.stop_playback()
                     await self.play_current_mp3()
