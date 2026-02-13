@@ -125,11 +125,13 @@ class ControlReproduccion:
 
         self.NIP19_RE = re.compile(r"^(npub1|nprofile1)[ac-hj-np-z02-9]+$")
 
+
+
+    ###### --------------- LOAD DATA --------------- ######
+
     def _es_nip19(self, texto: str) -> bool:
         return bool(self.NIP19_RE.match(texto))
 
-
-            ###### --------------- LOAD DATA --------------- ######
 
     async def resolve_all_npubs(self, entries):
         resolved = []
@@ -200,7 +202,7 @@ class ControlReproduccion:
         return mp3_files
 
 
-            ###### --------------- INIT SYSTEM --------------- ######
+    ###### --------------- INIT SYSTEM --------------- ######
 
     # arranca el sistema: resuelve npub, arranca en idle y lanza update_loop
     async def iniciar(self):
@@ -354,7 +356,6 @@ class ControlReproduccion:
                 duracion = self.estado_reproduccion.get("duration", 0)
                 volumen = int(self.estado_reproduccion.get("volume", 0))
 
-                # Redibujar solo si algo cambió
                 if (
                     titulo_actual != last_title
                     or tiempo != last_time
@@ -383,6 +384,7 @@ class ControlReproduccion:
 
             elif self.mode == "idle":
                 continue
+
 
     # detiene mpv
     async def stop_playback(self):
@@ -429,6 +431,7 @@ class ControlReproduccion:
             return self.playback_queue[self.current_mp3_index]
         except (IndexError, TypeError):
             return None
+
 
     # reproduce mp3 actual
     async def play_current_mp3(self):
@@ -502,7 +505,7 @@ class ControlReproduccion:
             if self.playlists:
                 await self.play_playlist(self.current_playlist, self.current_mp3_index)   
 
-
+    # idle mode
     async def enter_idle(self):
         await self.stop_playback()
         self.mpv_player.pause = False
@@ -539,7 +542,7 @@ class ControlReproduccion:
             self.estado_reproduccion["time"] = new_time
 
 
-            ###### --------------- MENU SWITCHES --------------- ######
+    ###### --------------- MENU TOOLS --------------- ######
 
     # reinicia mpv (video ON/OFF)
     def reboot_player(self):
@@ -600,7 +603,75 @@ class ControlReproduccion:
             self.lcd_interface.display_image(img)
             return
 
-            ###### --------------- ALL MENU --------------- ######
+
+    def display_free_text(self, texto):
+        max_chars = 20
+
+        lineas = [texto[i:i+max_chars] for i in range(0, len(texto), max_chars)]
+
+        contenido = "\n".join(lineas[:8])
+
+        img = self.lcd_interface.draw_text_on_lcd(contenido)
+        self.lcd_interface.display_image(img)
+
+    # template generico
+    async def menu_simple(self, titulo, opciones, callbacks, leer_entrada):
+        if len(opciones) != len(callbacks):
+            raise ValueError("Opciones y callbacks deben tener la misma longitud")
+
+        self.en_menu = True
+        await self.pause_update_loop()  # pausa update_loop
+        seleccion = 0
+        total = len(opciones)
+
+        while True:
+            await self.mostrar_menu_async(opciones, seleccion, titulo=titulo)
+            entrada = await leer_entrada()
+
+            if entrada == "abajo":
+                seleccion = (seleccion + 1) % total
+
+            elif entrada == "arriba":
+                seleccion = (seleccion - 1) % total
+
+            elif entrada == "enter":
+                await self.cerrar_menu_async()
+
+                callback = callbacks[seleccion]
+                if callback:
+                    await callback()
+
+                break
+
+            elif entrada == "volver":
+                break
+
+        self.en_menu = False
+        self.resume_update_loop()  # reanuda update_loop
+        await self.cerrar_menu_async()
+        self.refresh_display()
+
+
+    async def pause_update_loop(self):
+        """Cancela temporalmente update_loop."""
+        if self.update_task:
+            self.update_task.cancel()
+            try:
+                await self.update_task
+            except asyncio.CancelledError:
+                pass
+            self.update_task = None
+
+
+    def resume_update_loop(self):
+        """Vuelve a lanzar update_loop si estaba pausado."""
+        if not self.update_task:
+            self.update_task = asyncio.create_task(self.update_loop())
+
+
+
+
+    ###### --------------- MENU PLAYLIST / TRACK / SYSTEM --------------- ######
 
     # menu pistas
     async def seleccionar_pista(self, leer_entrada, playlist_index, playlist_tracks):
@@ -740,8 +811,7 @@ class ControlReproduccion:
             "Repeat playlist: ON" if self.repetir_playlist else "Repeat playlist: OFF",
             "Video",
             "ReplayGain: " + self.replaygain_mode.upper(),
-            "Refresh nostrbit",
-            "Refresh playlists",
+            "Refresh",
             "Scan Wi-Fi",
             "Play snake",
             "IDLE",
@@ -766,13 +836,18 @@ class ControlReproduccion:
             elif entrada == "arriba":
                 seleccion = (seleccion - 1) % total
             elif entrada == "enter":
+                
+                
                 if seleccion == 0:
                     self.refresh_display()
                     break
+                
+                
                 elif seleccion == 1:
                     self.repetir_playlist = not self.repetir_playlist
                     self.refresh_display()
                     break
+
 
                 elif seleccion == 2:
                     # alterna la opcion manteniendo otras claves del config
@@ -785,76 +860,39 @@ class ControlReproduccion:
                     self.refresh_display()
                     break
 
+
                 elif seleccion == 3:
                     # alterna ReplayGain track/album
                     await self.toggle_replaygain_mode()
                     self.refresh_display()
                     break
 
+
                 elif seleccion == 4:
-                    await self.cerrar_menu_async()
-                    img = self.lcd_interface.draw_text_on_lcd("Resolving links...")
-                    self.lcd_interface.display_image(img)
-                    nuevos_streams = await self.resolve_all_npubs(self.load_streams("/home/radiobit/stream/data/streams.txt"))
-                    self.streams = nuevos_streams
-                    img = self.lcd_interface.draw_text_on_lcd("Links resolved")
-                    self.lcd_interface.display_image(img)
-                    await asyncio.sleep(1.5)
-                    self.refresh_display()
+                    await self.menu_refresh(leer_entrada)
                     break
-                
+
+
                 elif seleccion == 5:
-                    await self.cerrar_menu_async()
-
-                    # guarda ruta de la playlist actual y la pista actual
-                    ruta_actual = self.playlists[self.current_playlist][0] if self.playlists else None
-                    pista_actual = self.mp3_actual()
-
-                    # recarga playlists
-                    self.playlists = self.load_playlists(self.mp3_directory)
-
-                    nuevo_indice_playlist = 0
-                    nuevo_indice_pista = 0
-
-                    if ruta_actual:
-                        for i, (ruta, pistas) in enumerate(self.playlists):
-                            if ruta == ruta_actual:
-                                nuevo_indice_playlist = i
-                                if pista_actual:
-                                    try:
-                                        nuevo_indice_pista = pistas.index(pista_actual)
-                                    except ValueError:
-                                        nuevo_indice_pista = 0
-                                break
-
-                    self.current_playlist = nuevo_indice_playlist
-                    self.playback_queue = self.playlists[self.current_playlist][1] if self.playlists else []
-                    self.current_mp3_index = nuevo_indice_pista if self.playback_queue else 0
-
-                    img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
-                    self.lcd_interface.display_image(img)
-                    await asyncio.sleep(1.5)
-                    self.refresh_display()
-                    break
-
-                elif seleccion == 6:
                     await self._menu_wifi(leer_entrada)
                     break 
 
-                elif seleccion == 7:
+
+                elif seleccion == 6:
                     from modules.snake_game import run_snake
                     await self.cerrar_menu_async()
                     await run_snake(self.lcd_interface)
-                    # restaurar imagen del stream si estaba activo
                     self.refresh_display()
                     break
                 
-                elif seleccion == 8:
+                
+                elif seleccion == 7:
                     await self.cerrar_menu_async()
                     await self.enter_idle()
                     break
                 
-                elif seleccion == 9:
+                
+                elif seleccion == 8:
                     await self.cerrar_menu_async()
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
                     self.lcd_interface.display_image(img)
@@ -864,13 +902,85 @@ class ControlReproduccion:
                     os.system("sudo systemctl poweroff")
                     break
 
+
             elif entrada is None:
                 self.refresh_display()
                 break
 
         self.en_menu = False
         await self.cerrar_menu_async()
+        self.refresh_display()
 
+
+    ###### --------------- REFRESH MENU --------------- ######
+
+    async def menu_refresh(self, leer_entrada):
+        await self.menu_simple(
+            titulo="REFRESH",
+            opciones=["Refresh nostrbit", "Refresh playlists"],
+            callbacks=[
+                self.refresh_nostrbit,
+                self.refresh_playlists
+            ],
+            leer_entrada=leer_entrada
+        )
+
+
+    async def refresh_nostrbit(self):
+        await self.cerrar_menu_async()
+
+        img = self.lcd_interface.draw_text_on_lcd("Resolving...")
+        self.lcd_interface.display_image(img)
+
+        nuevos_streams = await self.resolve_all_npubs(
+            self.load_streams("/home/radiobit/stream/data/streams.txt")
+        )
+
+        self.streams = nuevos_streams
+
+        img = self.lcd_interface.draw_text_on_lcd("Links resolved")
+        self.lcd_interface.display_image(img)
+        await asyncio.sleep(1.5)
+
+
+    async def refresh_playlists(self):
+        await self.cerrar_menu_async()
+
+        ruta_actual = self.playlists[self.current_playlist][0] if self.playlists else None
+        pista_actual = self.mp3_actual()
+
+        self.playlists = self.load_playlists(self.mp3_directory)
+
+        nuevo_indice_playlist = 0
+        nuevo_indice_pista = 0
+
+        if ruta_actual:
+            for i, (ruta, pistas) in enumerate(self.playlists):
+                if ruta == ruta_actual:
+                    nuevo_indice_playlist = i
+                    if pista_actual:
+                        try:
+                            nuevo_indice_pista = pistas.index(pista_actual)
+                        except ValueError:
+                            nuevo_indice_pista = 0
+                    break
+
+        self.current_playlist = nuevo_indice_playlist
+        self.playback_queue = (
+            self.playlists[self.current_playlist][1]
+            if self.playlists else []
+        )
+        self.current_mp3_index = (
+            nuevo_indice_pista if self.playback_queue else 0
+        )
+
+        img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
+        self.lcd_interface.display_image(img)
+        await asyncio.sleep(1.5)
+
+
+
+    ###### --------------- WIFI MENU --------------- ######
 
 
     async def _menu_wifi(self, leer_entrada):
@@ -942,7 +1052,6 @@ class ControlReproduccion:
         self.refresh_display()
 
 
-
     async def conectar_wifi(self, ssid, leer_entrada):
         await self.cerrar_menu_async()
         self.en_menu = True
@@ -951,7 +1060,7 @@ class ControlReproduccion:
         self.lcd_interface.display_image(img)
 
         if self.existing_wifi_connection(ssid):
-            # intentar levantar la conexión existente
+            # intentar levantar la conexion existente
             result = os.popen(f'sudo nmcli connection up "{ssid}"').read().lower()
             if "successfully activated" in result or "activated" in result:
                 img = self.lcd_interface.draw_text_on_lcd("Connected!")
@@ -962,7 +1071,7 @@ class ControlReproduccion:
                 self.refresh_display()
                 return
             else:
-                # si falla levantarla, borramos la conexión previa para rehacerla
+                # si falla, borrar la conexion previa para rehacerla
                 os.system(f'sudo nmcli connection delete "{ssid}"')
 
         # pedir contraseña
@@ -972,11 +1081,11 @@ class ControlReproduccion:
             self.refresh_display()
             return
 
-        # crear la conexión de cero
+        # crear conexion de cero
         os.system(f'sudo nmcli device wifi connect "{ssid}" password "{password}"')
         os.system(f'sudo nmcli connection modify "{ssid}" connection.permissions "" connection.system yes')
 
-        # intentar levantarla
+        # intentar levantar conexion
         result = os.popen(f'sudo nmcli connection up "{ssid}"').read().lower()
         if "successfully activated" in result or "activated" in result:
             img = self.lcd_interface.draw_text_on_lcd("Connected!")
@@ -991,21 +1100,18 @@ class ControlReproduccion:
 
     def existing_wifi_connection(self, ssid):
         try:
-            # Solo obtenemos NAME y TYPE
             out = os.popen("nmcli -t -f NAME,TYPE connection show").read().splitlines()
 
             for line in out:
                 parts = line.split(":")
                 if len(parts) >= 2:
                     name, typ = parts[0], parts[1]
-                    # Para Wi-Fi, el NAME suele ser el SSID
                     if typ == "wifi" and name == ssid:
                         return True
         except Exception:
             pass
 
         return False
-
 
 
     async def input_text(self, leer_entrada, titulo="Input", max_len=32, oculto=False):
@@ -1046,7 +1152,6 @@ class ControlReproduccion:
         return "".join(texto)
 
 
-
     # bucle asincrono dentro del menu (scroll texto)
     async def mostrar_menu_async(self, opciones, seleccion_index, titulo=None):
         # cancela tarea previa si existe
@@ -1063,6 +1168,7 @@ class ControlReproduccion:
             self.lcd_interface.display_menu(opciones, seleccion_index, titulo=titulo)
         )
 
+
     # cierra el bucle al salir del menu
     async def cerrar_menu_async(self):
         if self.menu_task:
@@ -1074,7 +1180,7 @@ class ControlReproduccion:
             self.menu_task = None
 
 
-            ###### --------------- CLOSE SYSTEM --------------- ######
+    ###### --------------- CLOSE SYSTEM --------------- ######
 
     # detiene tareas y cierra mpv
     async def close(self):
