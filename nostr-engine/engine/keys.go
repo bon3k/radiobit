@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"fiatjaf.com/nostr"
 	"github.com/btcsuite/btcutil/bech32"
@@ -50,4 +53,26 @@ func LoadFromNsec(nsec string) (*KeyPair, error) {
 
 func PubHex(pub [32]byte) string {
 	return hex.EncodeToString(pub[:])
+}
+
+// Cargar nsec desde ~/.nostr_nsec
+func LoadNsecFromFile() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	path := filepath.Join(home, ".nostr_nsec")
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", errors.New("no se pudo leer ~/.nostr_nsec")
+	}
+
+	nsec := strings.TrimSpace(string(data))
+	if nsec == "" {
+		return "", errors.New("~/.nostr_nsec está vacío")
+	}
+
+	return nsec, nil
 }

@@ -20,14 +20,19 @@ func main() {
 	}
 
 	nsec := *nsecFlag
-	if nsec == "" {
-		nsec = os.Getenv("NOSTR_NSEC")
-	}
 
-	if nsec == "" {
-		fmt.Println("provide --nsec or export NOSTR_NSEC")
+        if nsec == "" {
+	    nsec = os.Getenv("NOSTR_NSEC")
+        }
+
+        if nsec == "" {
+	    var err error
+	    nsec, err = engine.LoadNsecFromFile()
+	    if err != nil {
+		fmt.Println("No se encontró nsec en --nsec, NOSTR_NSEC ni ~/.nostr_nsec")
 		return
-	}
+	    }
+        }
 
 	relays := []string{
 		"wss://relay.damus.io",
