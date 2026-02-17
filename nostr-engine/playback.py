@@ -1336,8 +1336,30 @@ class ControlReproduccion:
             "-otxt"
         ]
 
-        proc = await asyncio.create_subprocess_exec(*cmd)
-        await proc.wait()
+        try:
+            proc = await asyncio.create_subprocess_exec(*cmd)
+
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=60)
+            except asyncio.TimeoutError:
+                try:
+                    proc.terminate()
+                    await asyncio.sleep(1)
+                    if proc.returncode is None:
+                        proc.kill()
+                except Exception:
+                    pass
+
+                self.voice_text = ""
+                return ""
+
+        except Exception:
+            self.voice_text = ""
+            return ""
+
+        if proc.returncode != 0:
+            self.voice_text = ""
+            return ""
 
         try:
             with open("/tmp/radiobit_voice.wav.txt") as f:
