@@ -103,3 +103,4 @@ cd /home/radiobit/radiobit
 cp nostr-engine/playback.py /home/radiobit/stream/modules
 ```
 
+Default model language is English; to change it, edit /home/radiobit/stream/modules/playback.py, uncomment line 1336, and modify "-l", "es" to the language you want.
