@@ -910,8 +910,9 @@ class ControlReproduccion:
 
 
             elif entrada is None:
-                self.refresh_display()
-                break
+#                self.refresh_display()
+#                break
+                continue
 
         self.en_menu = False
         await self.cerrar_menu_async()
