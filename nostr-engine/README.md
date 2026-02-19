@@ -31,9 +31,15 @@ go run main.go send-dm "destination_npub" "test DM message"
 
 ## Setup and compilation
 
-This setup guide is intended for SSH usage. If you have already built everything manually, you’re all set. But if you flashed the .img, you’ll need to connect a keyboard and screen to enable SSH and clone the repo.
+This setup guide is intended for SSH usage. If you have already built everything manually, you’re all set. But if you flashed the .img, you’ll need to connect a keyboard and screen to enable SSH.
 
 Follow these steps to prepare nostr-engine and whisper.cpp:
+
+Boot the Raspberry Pi and connect:
+
+```bash
+ssh radiobit@radiobit.local
+```
 
 Install required dependencies:
 
