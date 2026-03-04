@@ -126,9 +126,8 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
         sub_id,
         {
             "kinds": STREAM_KINDS,
-            "authors": [ZAP_STREAM_PUBKEY],
-            "#p": [pubkey_hex],
-            "limit": 1,
+            "authors": [ZAP_STREAM_PUBKEY, pubkey_hex],
+            "limit": 5,
         },
     ]
     close = ["CLOSE", sub_id]
@@ -143,12 +142,35 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
             typ, sid, ev = json.loads(msg)
 
             if typ == "EVENT" and sid == sub_id:
-                for tag in ev.get("tags", []):
-                    if tag[0] == "streaming":
-                        latency = time.monotonic() - start
-                        record_relay_stat(relay_url, latency, True)
-                        await ws.send(json.dumps(close))
-                        return tag[1]
+
+                author = ev.get("pubkey")
+                tags = ev.get("tags", [])
+
+                valid = False
+
+                if author == ZAP_STREAM_PUBKEY:
+                    valid = any(t[0] == "p" and t[1] == pubkey_hex for t in tags)
+
+                elif author == pubkey_hex:
+                    valid = True
+
+                if valid:
+                    for tag in tags:
+                        if tag[0] == "streaming":
+                            latency = time.monotonic() - start
+                            record_relay_stat(relay_url, latency, True)
+                            await ws.send(json.dumps(close))
+                            return tag[1]
+
+
+            if typ == "EOSE" and sid == sub_id:
+                break
+
+
+        record_relay_stat(relay_url, 0.0, False)
+        await ws.send(json.dumps(close))
+        return None
+
 
     finally:
         await ws.close()
