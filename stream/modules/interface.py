@@ -326,6 +326,7 @@ class InterfazLCD:
         self.display_image(img)
 
     async def display_menu(self, opciones, seleccion_index, titulo=None):
+
         width, height = self.width, self.height
         max_items_pantalla = height // 20 - (1 if titulo else 0)
         max_width = width - 10
@@ -335,79 +336,138 @@ class InterfazLCD:
         except IOError:
             fuente = ImageFont.load_default()
 
-        scroll_offset = 0
-        scroll_start_time = None
-        scroll_done = False
-        scroll_delay = 0.4
+        # cache de ancho de texto
+        if not hasattr(self, "_text_width_cache"):
+            self._text_width_cache = {}
+
         last_index = -1
         last_render_time = 0
 
-        # indice del primer item visible
+        scroll_delay = 0.01
+        scroll_offset = 0
+        scroll_done = False
+        scroll_image = None
+        scroll_start_time = 0
+
         primer_visible = max(0, seleccion_index - max_items_pantalla + 1)
 
         while True:
+
             ahora = time.time()
-            redibujar = seleccion_index != last_index or ahora - last_render_time > scroll_delay
+
+            redibujar = (
+                seleccion_index != last_index
+                or ahora - last_render_time > scroll_delay
+            )
 
             if redibujar:
+
                 imagen = Image.new("RGB", (width, height), "black")
                 draw = ImageDraw.Draw(imagen)
 
                 y = 0
+
                 if titulo:
                     draw.text((5, y), titulo[:width // 10], font=fuente, fill="white")
                     y += 23
 
                 scroll_needed = False
-                texto_seleccionado_ancho = 0
 
-                for i in range(primer_visible, min(primer_visible + max_items_pantalla, len(opciones))):
+                for i in range(
+                    primer_visible,
+                    min(primer_visible + max_items_pantalla, len(opciones))
+                ):
+
                     opcion = opciones[i]
-                    bbox = draw.textbbox((0, 0), opcion, font=fuente)
-                    texto_ancho = bbox[2] - bbox[0]
+
+                    # obtener ancho desde cache
+                    if opcion not in self._text_width_cache:
+                        bbox = draw.textbbox((0, 0), opcion, font=fuente)
+                        self._text_width_cache[opcion] = bbox[2] - bbox[0]
+
+                    texto_ancho = self._text_width_cache[opcion]
 
                     if i == seleccion_index:
+
                         draw.rectangle([(0, y), (width, y + 20)], fill="lightgray")
 
                         if texto_ancho > max_width:
+
                             scroll_needed = True
+
+                            # reiniciar scroll si cambiamos selección
                             if seleccion_index != last_index:
                                 scroll_offset = 0
-                                scroll_start_time = ahora
                                 scroll_done = False
-
-                            if scroll_start_time is None:
+                                scroll_image = None
                                 scroll_start_time = ahora
 
-                            tiempo_scroll = ahora - scroll_start_time - 0.5
-                            if tiempo_scroll > 0 and not scroll_done:
-                                velocidad_scroll = 40
-                                scroll_offset = int(tiempo_scroll * velocidad_scroll)
-                                max_scroll = texto_ancho - max_width + 10
-                                if scroll_offset >= max_scroll:
-                                    scroll_offset = max_scroll
-                                    scroll_done = True
-                            offset_x = 5 - scroll_offset
-                        else:
-                            scroll_offset = 0
-                            scroll_start_time = None
-                            scroll_done = True
-                            offset_x = 5
+                            # crear imagen scroll tras pequeña pausa
+                            if scroll_image is None and ahora - scroll_start_time > 0.25:
 
-                        draw.text((offset_x, y), opcion, font=fuente, fill="black")
+                                scroll_image = Image.new(
+                                    "RGB",
+                                    (texto_ancho + 20, 20),
+                                    "lightgray"
+                                )
+
+                                scroll_draw = ImageDraw.Draw(scroll_image)
+                                scroll_draw.text((0, 0), opcion, font=fuente, fill="black")
+
+                            if scroll_image:
+
+                                if not scroll_done:
+
+                                    scroll_offset += 4  # velocidad scroll
+
+                                    if scroll_offset >= texto_ancho - max_width:
+                                        scroll_offset = texto_ancho - max_width
+                                        scroll_done = True
+
+                                visible = scroll_image.crop(
+                                    (scroll_offset, 0, scroll_offset + max_width, 20)
+                                )
+
+                                imagen.paste(visible, (5, y))
+
+                            else:
+                                draw.text((5, y), opcion, font=fuente, fill="black")
+
+                        else:
+
+                            draw.text((5, y), opcion, font=fuente, fill="black")
+
+                            scroll_image = None
+                            scroll_offset = 0
+                            scroll_done = True
+
                     else:
+
+                        # truncar texto largo
                         if texto_ancho > max_width:
+
+                            truncado = opcion
+
                             for j in range(len(opcion), 0, -1):
-                                truncado = opcion[:j] + "..."
-                                bbox_truncado = draw.textbbox((0, 0), truncado, font=fuente)
-                                if bbox_truncado[2] <= max_width:
-                                    opcion = truncado
+
+                                test = opcion[:j] + "..."
+
+                                if test not in self._text_width_cache:
+                                    bbox = draw.textbbox((0, 0), test, font=fuente)
+                                    self._text_width_cache[test] = bbox[2] - bbox[0]
+
+                                if self._text_width_cache[test] <= max_width:
+                                    truncado = test
                                     break
+
+                            opcion = truncado
+
                         draw.text((5, y), opcion, font=fuente, fill="white")
 
                     y += 20
 
                 self.display_image(imagen)
+
                 last_index = seleccion_index
                 last_render_time = ahora
 
