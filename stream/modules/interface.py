@@ -49,6 +49,7 @@ class InterfazLCD:
 
     def start_inactivity_monitor(self):
         # crear la tarea de monitorizacion solo cuando se llame a este metodo
+        self.last_input_time = time.time()
         asyncio.create_task(self.monitor_inactivity())
 
     async def monitor_inactivity(self):
