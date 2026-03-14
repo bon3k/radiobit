@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Streams</title>
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+.img-preview {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border: 1px solid #444;
+    margin-left: 5px;
+}
+
+.input-group-append select {
+    background-color: #2b2b2b;
+    color: grey;
+    border: 1px solid #444;
+}
+
+.input-group-append button {
+    margin-left: 5px;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+}
+</style>
+</head>
+
+<body>
+
+<div class="d-flex justify-content-end mb-3">
+<a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mr-2">🏠</a>
+<a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">log out</a>
+</div>
+
+<div class="container mt-5 pb-5">
+
+<div class="pt-5"></div>
+<div class="pt-5"></div>
+
+<form method="POST">
+
+<div id="link-container">
+
+{% for stream in streams %}
+
+<div class="input-group mb-2 link-field">
+
+<div class="input-group-prepend">
+<span class="input-group-text">{{ loop.index }}</span>
+</div>
+
+<input type="text"
+class="form-control"
+name="links[]"
+value="{{ stream.url }}">
+
+<div class="input-group-append d-flex align-items-center">
+
+<select class="form-control"
+name="images[]"
+onchange="updatePreview(this)">
+
+{% for img in images %}
+<option value="{{ img }}"
+{% if img == stream.image %}selected{% endif %}>
+{{ img }}
+</option>
+{% endfor %}
+
+</select>
+
+<img src="{{ url_for('stream_images', filename=stream.image) }}"
+class="img-preview">
+
+<button type="button"
+class="btn btn-danger"
+onclick="removeField(this)">X</button>
+
+</div>
+</div>
+
+{% endfor %}
+
+</div>
+
+<button type="submit" class="btn btn-success">Save</button>
+<button type="button" class="btn btn-primary" onclick="addField()">Add</button>
+<a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+
+</form>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+
+<script>
+
+function removeField(button) {
+    var field = button.closest('.link-field');
+    field.parentNode.removeChild(field);
+}
+
+function addField() {
+
+    var container = document.getElementById('link-container');
+
+    var imgOptions = `{% for img in images %}
+<option value="{{ img }}" {% if img == 'default.png' %}selected{% endif %}>{{ img }}</option>
+{% endfor %}`;
+
+    var newField = document.createElement('div');
+
+    newField.classList.add('input-group','mb-2','link-field');
+
+    newField.innerHTML = `
+
+<div class="input-group-prepend">
+<span class="input-group-text">+</span>
+</div>
+
+<input type="text"
+class="form-control"
+name="links[]"
+value="">
+
+<div class="input-group-append d-flex align-items-center">
+
+<select class="form-control"
+name="images[]"
+onchange="updatePreview(this)">
+${imgOptions}
+</select>
+
+<img src="/stream-images/default.png"
+class="img-preview">
+
+<button type="button"
+class="btn btn-danger"
+onclick="removeField(this)">X</button>
+
+</div>
+`;
+
+    container.appendChild(newField);
+}
+
+
+function updatePreview(select) {
+
+    var img = select.nextElementSibling;
+
+    img.src = "/stream-images/" + select.value;
+
+}
+
+
+new Sortable(document.getElementById("link-container"), {
+
+animation:150,
+ghostClass:"sortable-ghost"
+
+});
+
+</script>
+
+</body>
+</html>

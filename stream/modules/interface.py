@@ -7,6 +7,7 @@ import numpy as np
 import sugarpie
 import zlib
 
+
 class InterfazLCD:
     def __init__(self, rst_pin=27, dc_pin=25, bl_pin=24, cs_pin=8):
         self.width = 240
@@ -19,7 +20,7 @@ class InterfazLCD:
         self.last_image_hash = None
         self.pisugar = sugarpie.Pisugar()
         self.last_input_time = time.time()
-        self.inactive_timeout = 60  # segundos
+        self.inactive_timeout = 80  # segundos  ///AUMENTA O DISMINUYE SEGUN PREFIERAS///// 
         self.backlight_on = True
         self.ultimo_nivel_bateria = -1
         self.current_image = None # flag para guardar imagen y actualizar bateria modo stream
@@ -43,14 +44,17 @@ class InterfazLCD:
         self.spi.mode = 0b00
         self.inicializar_lcd()
 
+
     def __del__(self):
         self.spi.close()
         GPIO.cleanup()
+
 
     def start_inactivity_monitor(self):
         # crear la tarea de monitorizacion solo cuando se llame a este metodo
         self.last_input_time = time.time()
         asyncio.create_task(self.monitor_inactivity())
+
 
     async def monitor_inactivity(self):
         while True:
@@ -59,19 +63,23 @@ class InterfazLCD:
                 self.bl_pwm.ChangeDutyCycle(0)
                 self.backlight_on = False
 
+
     def update_activity(self):
         self.last_input_time = time.time()
         if not self.backlight_on:
             self.bl_pwm.ChangeDutyCycle(100)
             self.backlight_on = True
 
+
     def write_command(self, cmd):
         GPIO.output(self.DC_PIN, GPIO.LOW)
         self.spi.xfer([cmd])
 
+
     def write_data(self, data):
         GPIO.output(self.DC_PIN, GPIO.HIGH)
         self.spi.xfer(data)
+
 
     def set_window(self, x_start=0, y_start=0, x_end=239, y_end=239):
         self.write_command(0x2A)
@@ -79,6 +87,7 @@ class InterfazLCD:
         self.write_command(0x2B)
         self.write_data([0x00, y_start, 0x00, y_end])
         self.write_command(0x2C)
+
 
     def inicializar_lcd(self):
         GPIO.output(self.RST_PIN, GPIO.HIGH)
@@ -103,13 +112,14 @@ class InterfazLCD:
         self.write_command(0x11)
         self.write_command(0x29)
 
+
     def display_image(self, image):
         if isinstance(image, str):
             img = Image.open(image)
         else:
             img = image
 
-        img = img.rotate(180, expand=False)  #     //// ROTAR PANTALLA ///// horizontal: 270
+        img = img.rotate(180, expand=False)  #   /// ROTAR PANTALLA /// horizontal: 270  # JOYSTICK + BOTONES SE CAMBIAN EN main.py
         img = img.resize((240, 240)).convert("RGB")
         self.current_image = img.copy()  # <--- Guarda copia
         img_data = np.array(img, dtype=np.uint16)
@@ -128,8 +138,10 @@ class InterfazLCD:
         for i in range(0, len(img_rgb565), 4096):
             self.write_data(img_rgb565[i:i + 4096])
 
+
     def split_text(self, texto, max_length=14):
         return [texto[i:i+max_length] for i in range(0, len(texto), max_length)]
+
 
     def update_battery_icon_only(self):
         """
@@ -192,6 +204,7 @@ class InterfazLCD:
         if relleno > 0:
             draw.rectangle((x + 3, y + 3, x + 3 + relleno, y + alto - 3), fill="grey")
 
+
     def get_battery_level(self):
         now = time.time()
         if now - getattr(self, "_last_battery_check", 0) > 10:
@@ -201,6 +214,7 @@ class InterfazLCD:
                 self.ultimo_nivel_bateria = 0
             self._last_battery_check = now
         return self.ultimo_nivel_bateria
+
 
     def draw_volume_triangle(self, draw, volume_level):
 
@@ -309,6 +323,7 @@ class InterfazLCD:
         img = self.draw_text_on_lcd(titulo, extra_info, progreso, volume_level)
         self.display_image(img)
 
+
     def create_mp3_snapshot(self, titulo, tiempo_actual, duracion, volume_level=None):
         """
         Devuelve un Image de la pantalla MP3 sin mostrarlo.
@@ -322,9 +337,11 @@ class InterfazLCD:
         img = self.draw_text_on_lcd(titulo, extra_info, progreso, volume_level)
         return img
 
+
     def show_black_screen(self):
         img = Image.new("RGB", (self.width, self.height), (0, 0, 0))
         self.display_image(img)
+
 
     async def display_menu(self, opciones, seleccion_index, titulo=None):
 
@@ -396,14 +413,14 @@ class InterfazLCD:
 
                             scroll_needed = True
 
-                            # reiniciar scroll si cambiamos selección
+                            # reiniciar scroll si cambia seleccion
                             if seleccion_index != last_index:
                                 scroll_offset = 0
                                 scroll_done = False
                                 scroll_image = None
                                 scroll_start_time = ahora
 
-                            # crear imagen scroll tras pequeña pausa
+                            # crear imagen scroll tras una pausa
                             if scroll_image is None and ahora - scroll_start_time > 0.25:
 
                                 scroll_image = Image.new(
@@ -476,6 +493,7 @@ class InterfazLCD:
                 break
 
             await asyncio.sleep(scroll_delay)
+
 
     def limpiar_lcd(self):
         self.set_window()

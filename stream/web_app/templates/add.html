@@ -13,7 +13,8 @@
         <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">log out</a>
     </div>
     <div class="container mt-5">
-        <h1>new connection</h1>
+        <div class="pt-5"></div>
+        <div class="pt-5"></div>
         <form method="POST">
             <div class="form-group">
                 <label for="ssid">SSID</label>
@@ -23,7 +24,7 @@
                 <label for="password">Password</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn btn-success">Connect</button>
+            <button type="submit" class="btn btn-success">Save</button>
             <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
         </form>
     </div>

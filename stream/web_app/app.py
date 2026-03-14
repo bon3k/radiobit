@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
+from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash, send_from_directory
 import os
 import secrets
 import subprocess
@@ -8,8 +8,22 @@ import re
 import pam
 from functools import wraps
 import random
+from datetime import timedelta
+import json
 
 app = Flask(__name__)
+
+
+# --- SESSION / SECURITY CONFIG ---
+
+app.config['SESSION_PERMANENT'] = False  # sesiones no persistentes
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True
+)
+
+
 
 SECRET_FILE = "/home/radiobit/stream/secret_key.txt"
 
@@ -23,10 +37,26 @@ else:
     os.chmod(SECRET_FILE, 0o600)
 
 BASE_DIR = "/home/radiobit/stream/data"
-FILE_PATH = os.path.join(BASE_DIR, "streams.txt")
+
 VOLUME_FILE = os.path.expanduser("~/.config/wireplumber/wireplumber.conf.d/10-default-volume.conf")
 
 AUDIO_EXTS = ('.mp3', '.flac', '.ogg', '.wav', '.aac', '.m4a', '.aif', '.aiff')
+
+STREAMS_JSON = os.path.join(BASE_DIR, "streams.json")
+
+STREAM_IMAGES_DIR = os.path.join(BASE_DIR, "stream-images")
+
+
+# listar imagenes disponibles
+def list_stream_images():
+    if not os.path.exists(STREAM_IMAGES_DIR):
+        return []
+    return sorted([f for f in os.listdir(STREAM_IMAGES_DIR) if f.lower().endswith(('.png','.jpg','.jpeg','.gif'))])
+
+
+@app.route('/stream-images/<path:filename>')
+def stream_images(filename):
+    return send_from_directory(STREAM_IMAGES_DIR, filename)
 
 
 def login_required(f):
@@ -223,28 +253,49 @@ def index():
     return render_template('index.html', connections=connections, default_volume=default_volume)
 
 
-@app.route('/edit_file', methods=['GET', 'POST'])
+@app.route('/edit_streams', methods=['GET', 'POST'])
 @login_required
-def edit_file():
-    if request.method == 'POST':
-        raw_links = request.form.to_dict(flat=True)
-        new_links = [
-            raw_links[key].strip()
-            for key in sorted(raw_links, key=lambda k: int(k.split("[")[1].split("]")[0]))
-            if "links[" in key and raw_links[key].strip()
-        ]
+def edit_streams():
+    images = list_stream_images()
 
-        with open(FILE_PATH, 'w') as f:
-            f.write("\n".join(new_links))
+    if request.method == 'POST':
+        # Recolectar datos del form
+        streams = []
+
+        links = request.form.getlist("links[]")
+        images = request.form.getlist("images[]")
+
+        for url, image in zip(links, images):
+            url = url.strip()
+            if url:
+                streams.append({
+                    "url": url,
+                    "image": image or "default.png"
+                })
+
+        with open(STREAMS_JSON, "w", encoding="utf-8") as f:
+            json.dump(streams, f, indent=2)
         return redirect(url_for('index'))
 
     try:
-        with open(FILE_PATH, 'r') as f:
-            content = f.read().splitlines()
+        with open(STREAMS_JSON, "r", encoding="utf-8") as f:
+            streams = json.load(f)
     except FileNotFoundError:
-        content = []
+        streams = []
 
-    return render_template('edit_file.html', links=list(enumerate(content, start=1)))
+    modified = False  # <-- flag para saber si necesita sobrescribir el JSON
+    for s in streams:
+        img = s.get("image", "default.png")
+        if not img or not os.path.exists(os.path.join(STREAM_IMAGES_DIR, img)):
+            s["image"] = "default.png"
+            modified = True
+
+    # si se modifica algun stream, actualizar el JSON
+    if modified:
+        with open(STREAMS_JSON, "w", encoding="utf-8") as f:
+            json.dump(streams, f, indent=2)
+
+    return render_template("edit_streams.html", streams=streams, images=images)
 
 
 @app.route('/delete/<name>', methods=['POST'])
@@ -467,6 +518,7 @@ def get_default_volume():
         pass
 
     return 0.4
+
 
 @app.route('/recreate_m3u', methods=['POST'])
 @login_required

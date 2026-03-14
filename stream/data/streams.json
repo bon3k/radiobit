@@ -1,0 +1,30 @@
+[
+  {
+    "url": "https://us3.internet-radio.com/proxy/topblues?mp=/stream&1729729456287",
+    "image": "topblues.png"
+  },
+  {
+    "url": "npub12hcytyr8fumy3axde8wgeced523gyp6v6zczqktwuqeaztfc2xzsz3rdp4",
+    "image": "nogood.png"
+  },
+  {
+    "url": "nprofile1qqsqtespt8c7pfktvna9w07pa034lxz6jaw7le7h2cplmw0gelfcxdqc6tl4e",
+    "image": "synthdragon.png"
+  },
+  {
+    "url": "nprofile1qqsrztgql26gvryk0jvtk3v9judtr0hegaw4rd97e0ylxyledpqr72cwuqmp7",
+    "image": "scardust.png"
+  },
+  {
+    "url": "https://live.antenne.at/sun",
+    "image": "antenne_sun.png"
+  },
+  {
+    "url": "http://stream.radioparadise.com/flac",
+    "image": "radio_paradise.png"
+  },
+  {
+    "url": "http://stream.radioparadise.com/rock-flac",
+    "image": "default.png"
+  }
+]

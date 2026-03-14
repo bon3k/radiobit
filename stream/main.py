@@ -17,20 +17,21 @@ JOYSTICK_RIGHT_PIN = 26
 JOYSTICK_PRESS_PIN = 13
 
 # rutas
-streams_file_path = "/home/radiobit/stream/data/streams.txt"
+streams_file_path = "/home/radiobit/stream/data/streams.json"
 images_directory = "/home/radiobit/stream/data/stream-images/"
 mp3_directory = "/home/radiobit/stream/data/main-mix/"
 
-# inicializar modulos
+# iniciar modulos
 interfaz_lcd = InterfazLCD()
 control_reproduccion = ControlReproduccion(streams_file_path, images_directory, mp3_directory, interfaz_lcd)
 
-# otros
+
 debounce_time = 0.3
 long_press_time = 0.3
 fast_forward_active = False
 
-in_menu = False  # <--- flag para controlar el joystick dentro del menu de pistas
+in_menu = False  # <--- flag para controlar el joystick dentro del menu
+
 
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
@@ -40,6 +41,7 @@ def setup_gpio():
                 JOYSTICK_LEFT_PIN, JOYSTICK_RIGHT_PIN,
                 JOYSTICK_PRESS_PIN]:
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 
 async def handle_joystick_action(pin, action_short, action_long):
     global fast_forward_active
@@ -56,12 +58,9 @@ async def handle_joystick_action(pin, action_short, action_long):
         await action_short()
     fast_forward_active = False
 
+
 async def leer_entrada_menu():
-    """
-    Espera una entrada de joystick: 'arriba', 'abajo' o 'enter'.
-    Se usa exclusivamente durante la selección de pista.
-    """
-    timeout = 10  # segundos
+    timeout = 16  # segundos  // menu timeout
     tiempo_inicio = asyncio.get_event_loop().time()
     while True:
         ahora = asyncio.get_event_loop().time()
@@ -98,6 +97,7 @@ async def leer_entrada_menu():
             return None  # Inactividad
 
         await asyncio.sleep(0.05)
+
 
 async def main_loop():
     global in_menu
@@ -191,6 +191,7 @@ async def main_loop():
             await control_reproduccion.change_volume("up")
 
         await asyncio.sleep(0.05)
+
 
 async def main():
     setup_gpio()

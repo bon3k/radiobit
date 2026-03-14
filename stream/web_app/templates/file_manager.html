@@ -12,27 +12,29 @@
         <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mr-2">🏠</a>
         <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">log out</a>
     </div>
-    <div class="container mt-5">
-        <h1>file manager</h1>
-        <p>current directory: <strong>{{ current_path }}</strong></p>
+    <div class="container mt-5 pb-5">
+        <div class="pt-5"></div>
 
         {% if has_audio or has_m3u %}
-        <div class="mb-3">
-            <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
+    <div class="mb-3">
+        <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
 
-            {% if has_m3u %}
-                <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
+        {% if has_m3u %}
+            <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
+        {% endif %}
+    </div>
+    {% endif %}
+
+        <div class="d-flex align-items-center mb-3">
+            {% if parent_path %}
+                <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary btn-sm mr-3">⬆</a>
             {% endif %}
+            <span>data/<strong>{{ current_path }}</strong></span>
         </div>
-        {% endif %}
 
-        {% if parent_path %}
-            <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary">⬆</a>
-        {% endif %}
-        
         <hr>
 
-        {% set protected_items = ['main-mix', 'stream-images', 'streams.txt'] %}
+        {% set protected_items = ['main-mix', 'stream-images', 'streams.json'] %}
 
         <ul class="list-group">
             {% for item in items %}
