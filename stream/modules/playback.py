@@ -635,7 +635,7 @@ class ControlReproduccion:
             raise ValueError("Opciones y callbacks deben tener la misma longitud")
 
         self.en_menu = True
-        await self.pause_update_loop()  # pausa update_loop
+#        await self.pause_update_loop()  # pausa update_loop
         seleccion = 0
         total = len(opciones)
 
@@ -662,7 +662,7 @@ class ControlReproduccion:
                 break
 
         self.en_menu = False
-        self.resume_update_loop()  # reanuda update_loop
+#        self.resume_update_loop()  # reanuda update_loop
         await self.cerrar_menu_async()
         self.refresh_display()
 
