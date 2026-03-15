@@ -909,9 +909,11 @@ class ControlReproduccion:
                 
                 elif seleccion == 8:
                     await self.cerrar_menu_async()
+                    await self.close()  # asegura cerrar streams
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
                     self.lcd_interface.display_image(img)
-                    await self.close()  # asegura cerrar streams
+                    await asyncio.sleep(0.5)
+                    self.lcd_interface.screen_locked = True
                     os.system("sync")
                     await asyncio.sleep(0.8)
                     os.system("sudo systemctl poweroff")

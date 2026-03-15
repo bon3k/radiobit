@@ -26,7 +26,7 @@ class InterfazLCD:
         self.current_image = None # flag para guardar imagen y actualizar bateria modo stream
         self.scroll_offset = 0
         self.last_scroll_time = time.time()
-
+        self.screen_locked = False
 
 
         GPIO.setmode(GPIO.BCM)
@@ -114,6 +114,9 @@ class InterfazLCD:
 
 
     def display_image(self, image):
+        if self.screen_locked:
+            return
+        
         if isinstance(image, str):
             img = Image.open(image)
         else:
