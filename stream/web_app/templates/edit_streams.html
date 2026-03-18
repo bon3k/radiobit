@@ -47,6 +47,10 @@
 
 <form method="POST">
 
+<p class="text-muted small ml-2">
+    ● Drag items using ☰ to reorder
+</p>
+
 <div id="link-container">
 
 {% for stream in streams %}
@@ -54,7 +58,7 @@
 <div class="input-group mb-2 link-field">
 
 <div class="input-group-prepend">
-<span class="input-group-text">{{ loop.index }}</span>
+<span class="input-group-text drag-handle">☰</span>
 </div>
 
 <input type="text"
@@ -167,7 +171,8 @@ function updatePreview(select) {
 new Sortable(document.getElementById("link-container"), {
 
 animation:150,
-ghostClass:"sortable-ghost"
+ghostClass:"sortable-ghost",
+handle: ".drag-handle"
 
 });
 

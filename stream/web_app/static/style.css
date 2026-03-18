@@ -55,3 +55,11 @@ input[type="text"], .form-control {
     background-color: #5a32a3; /* un poco más oscuro al hover */
     color: white;
 }
+
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
