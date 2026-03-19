@@ -65,7 +65,7 @@ class ControlReproduccion:
         self._create_mpv()  # crear el objeto mpv segun config.json
 
 
-            ###### --------------- LOAD MPV --------------- ######
+    ###### --------------- LOAD MPV --------------- ######
 
     def _create_mpv(self):
         """(Re)crea self.mpv_player según self.video_enabled y registra observers/callbacks."""
@@ -136,23 +136,31 @@ class ControlReproduccion:
     async def resolve_all_npubs(self, entries):
         resolved = []
         for entry in entries:
-            entry = entry.strip()
-            if self._es_nip19(entry):
+            url = entry.get("url", "").strip()
+            if self._es_nip19(url):
                 try:
-                    url = await resolve_m3u8_async(entry)
-                    resolved.append(url if url else "")
+                    resolved_url = await resolve_m3u8_async(url)
+                    entry["url"] = resolved_url if resolved_url else ""
                 except Exception:
-                    resolved.append("")
-            else:
-                resolved.append(entry)
+                    entry["url"] = ""
+            resolved.append(entry)
         return resolved
 
 
     def load_streams(self, file_path):
+        streams = []
         if os.path.exists(file_path):
-            with open(file_path, "r") as f:
-                return [line.strip() for line in f if line.strip()]
-        return []
+            try:
+                with open(file_path, "r") as f:
+                    data = json.load(f)
+                    for entry in data:
+                        streams.append({
+                            "url": entry.get("url"),
+                            "image": entry.get("image")
+                        })
+            except Exception as e:
+                print(f"Error loading streams JSON: {e}")
+        return streams
 
 
     def load_images(self, directory):
@@ -395,7 +403,8 @@ class ControlReproduccion:
     async def start_stream(self, stream_index: int):
         if not self.streams or not (0 <= stream_index < len(self.streams)):
             return
-        stream_url = self.streams[stream_index].strip()
+        entry = self.streams[stream_index]
+        stream_url = entry.get("url", "").strip()
         await self.stop_playback()
         self.mode = "stream"
         self.current_stream = stream_index
@@ -403,9 +412,10 @@ class ControlReproduccion:
         if not stream_url:
             await self.stop_playback()
             self.current_stream = stream_index  # marcar indice actual
+            
             img = self.lcd_interface.draw_text_on_lcd(
                 f"STREAM {stream_index + 1}/{len(self.streams)}\nOFFLINE"
-            )
+            )    
             self.ultimo_frame_stream = img
             self.lcd_interface.display_image(img)
             return
@@ -413,12 +423,13 @@ class ControlReproduccion:
         try:
             await asyncio.to_thread(self.mpv_player.play, stream_url)
             self.mpv_player.pause = False
-            img = self.images.get(
-                stream_index,
-                "/home/radiobit/stream/data/stream-images/default.png"
-            )
-            self.ultimo_frame_stream = img
-            self.lcd_interface.display_image(img)
+            
+            entry = self.streams[stream_index]
+            img_path = os.path.join("/home/radiobit/stream/data/stream-images",
+                                    entry.get("image", "default.png"))
+            
+            self.ultimo_frame_stream = img_path
+            self.lcd_interface.display_image(img_path)
             self.lcd_interface.update_battery_icon_only()
         except Exception:
             img = self.lcd_interface.draw_text_on_lcd("ERROR\nPlay failed")
@@ -505,6 +516,7 @@ class ControlReproduccion:
             if self.playlists:
                 await self.play_playlist(self.current_playlist, self.current_mp3_index)   
 
+
     # idle mode
     async def enter_idle(self):
         await self.stop_playback()
@@ -542,6 +554,7 @@ class ControlReproduccion:
             self.estado_reproduccion["time"] = new_time
 
 
+
     ###### --------------- MENU TOOLS --------------- ######
 
     # reinicia mpv (video ON/OFF)
@@ -558,6 +571,7 @@ class ControlReproduccion:
                     asyncio.run_coroutine_threadsafe(self.play_current_mp3(), self.loop)
         except Exception:
             pass
+
 
     # replaygain album/track
     async def toggle_replaygain_mode(self):
@@ -614,13 +628,14 @@ class ControlReproduccion:
         img = self.lcd_interface.draw_text_on_lcd(contenido)
         self.lcd_interface.display_image(img)
 
+
     # template generico
     async def menu_simple(self, titulo, opciones, callbacks, leer_entrada):
         if len(opciones) != len(callbacks):
             raise ValueError("Opciones y callbacks deben tener la misma longitud")
 
         self.en_menu = True
-        await self.pause_update_loop()  # pausa update_loop
+#        await self.pause_update_loop()  # pausa update_loop
         seleccion = 0
         total = len(opciones)
 
@@ -647,7 +662,7 @@ class ControlReproduccion:
                 break
 
         self.en_menu = False
-        self.resume_update_loop()  # reanuda update_loop
+#        self.resume_update_loop()  # reanuda update_loop
         await self.cerrar_menu_async()
         self.refresh_display()
 
@@ -900,9 +915,11 @@ class ControlReproduccion:
                 
                 elif seleccion == 9:
                     await self.cerrar_menu_async()
+                    await self.close()  # asegura cerrar streams
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
                     self.lcd_interface.display_image(img)
-                    await self.close()  # asegura cerrar streams
+                    await asyncio.sleep(0.5)
+                    self.lcd_interface.screen_locked = True
                     os.system("sync")
                     await asyncio.sleep(0.8)
                     os.system("sudo systemctl poweroff")
@@ -940,7 +957,7 @@ class ControlReproduccion:
         self.lcd_interface.display_image(img)
 
         nuevos_streams = await self.resolve_all_npubs(
-            self.load_streams("/home/radiobit/stream/data/streams.txt")
+            self.load_streams("/home/radiobit/stream/data/streams.json")
         )
 
         self.streams = nuevos_streams
