@@ -122,7 +122,7 @@ class InterfazLCD:
         else:
             img = image
 
-        img = img.rotate(180, expand=False)  #   /// ROTAR PANTALLA /// horizontal: 270  # JOYSTICK + BOTONES SE CAMBIAN EN main.py
+        img = img.rotate(180, expand=False)  #   /// ROTAR PANTALLA /// horizontal: 270
         img = img.resize((240, 240)).convert("RGB")
         self.current_image = img.copy()  # <--- Guarda copia
         img_data = np.array(img, dtype=np.uint16)
@@ -305,6 +305,160 @@ class InterfazLCD:
         if volume_level is not None:
             self.draw_volume_triangle(draw, volume_level)
         return img
+
+
+    # render nostr dm preview 
+    def draw_chat_on_lcd(self, texto):
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
+
+        img = Image.new("RGB", (240, 240), "black")
+        draw = ImageDraw.Draw(img)
+
+        max_width = 220
+        margin_x = 10
+        y = 40
+        line_height = draw.textbbox((0, 0), "A", font=font)[3] + 2
+
+        lines = []
+
+        
+        for paragraph in texto.split("\n"):
+            words = paragraph.split()
+            current_line = ""
+
+            for word in words:
+                test_line = f"{current_line} {word}".strip()
+                bbox = draw.textbbox((0, 0), test_line, font=font)
+
+                if bbox[2] - bbox[0] <= max_width:
+                    current_line = test_line
+                else:
+                    lines.append(current_line)
+                    current_line = word
+
+            if current_line:
+                lines.append(current_line)
+
+            lines.append("")
+
+        # alineado a la izquierda
+        for line in lines[:10]:
+            draw.text((margin_x, y), line, fill="lightgrey", font=font)
+            y += line_height
+
+        self.draw_battery_icon(draw)
+
+        return img
+
+
+    # render chat messages
+    def draw_chat_feed(self, blocks, scroll_offset):
+        font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16
+        )
+
+        img = Image.new("RGB", (240, 240), "black")
+        draw = ImageDraw.Draw(img)
+
+        max_width = 200
+        margin_x = 10
+        y = 30
+        line_height = draw.textbbox((0, 0), "A", font=font)[3] + 2
+        spacing = 6
+
+        y_cursor = 0
+        visible = []
+
+        for t, text in blocks[scroll_offset:]:
+
+            h = spacing if t == "space" else line_height
+
+            if y_cursor + h > (240 - y):
+                break
+
+            visible.append((t, text))
+            y_cursor += h
+
+        for t, text in visible:
+
+            if t == "name":
+                draw.text((margin_x, y), text, fill=(120, 120, 120), font=font)
+                y += line_height
+
+            elif t == "text":
+                draw.text((margin_x + 5, y), text, fill="lightgrey", font=font)
+                y += line_height
+
+            elif t == "space":
+                y += spacing
+
+        self.draw_battery_icon(draw)
+        return img
+
+
+    def get_chat_viewport(self):
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+        dummy_img = Image.new("RGB", (240, 240))
+        draw = ImageDraw.Draw(dummy_img)
+
+        line_height = draw.textbbox((0, 0), "A", font=font)[3] + 2
+
+        y_start = 30
+        available_height = 240 - y_start
+
+        return available_height // line_height
+
+
+    def build_chat_blocks(self, mensajes, name):
+        font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16
+        )
+        dummy = Image.new("RGB", (240, 240))
+        draw = ImageDraw.Draw(dummy)
+
+        max_width = 200
+
+        blocks = []
+
+        for msg in mensajes:
+
+            sender = "You" if msg["dir"] == "out" else name
+            blocks.append(("name", sender))
+
+            for paragraph in msg["text"].split("\n"):
+
+                words = paragraph.split()
+                current = ""
+
+                for w in words:
+                    test = f"{current} {w}".strip()
+                    bbox = draw.textbbox((0, 0), test, font=font)
+
+                    if bbox[2] - bbox[0] <= max_width:
+                        current = test
+                    else:
+                        if current:
+                            blocks.append(("text", current))
+                        current = w
+
+                if current:
+                    blocks.append(("text", current))
+
+            blocks.append(("space", ""))
+
+        return blocks
+
+
+    def get_chat_scroll_limits(self, blocks, viewport_lines):
+        total = 0
+
+        for t, _ in blocks:
+            if t == "space":
+                total += 1
+            else:
+                total += 1
+
+        return max(0, total - viewport_lines)
 
 
     def display_mp3_info(self, titulo, tiempo_actual, duracion, volume_level=None):
