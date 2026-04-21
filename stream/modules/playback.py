@@ -62,6 +62,7 @@ class ControlReproduccion:
         self.ultimo_frame_stream = None
         self.ultimo_frame_mp3 = None
         self.idle_image = None
+        self.last_battery_update = 0
         self._create_mpv()  # crear el objeto mpv segun config.json
 
 
@@ -332,7 +333,6 @@ class ControlReproduccion:
 
     # refresh pantalla con el estado actual de reproduccion (pista, tiempo, bateria)
     async def update_loop(self):
-        last_battery_update = 0
 
         last_title = None
         last_time = None
@@ -386,12 +386,15 @@ class ControlReproduccion:
 
             elif self.mode == "stream":
                 now = time.time()
-                if now - last_battery_update > 10:
-                    last_battery_update = now
+                if now - self.last_battery_update > 10:
+                    self.last_battery_update = now
                     await asyncio.to_thread(self.lcd_interface.update_battery_icon_only)
 
             elif self.mode == "idle":
-                continue
+                now = time.time()
+                if now - self.last_battery_update > 10:
+                    self.last_battery_update = now
+                    await asyncio.to_thread(self.lcd_interface.update_battery_icon_only)
 
 
     # detiene mpv
