@@ -16,29 +16,42 @@
         <div class="pt-5"></div>
 
         {% if has_audio or has_m3u %}
-    <div class="mb-3">
-        <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
+        <div class="mb-3">
+            <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
 
-        {% if has_m3u %}
-            <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
+            {% if has_m3u %}
+                <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
+            {% endif %}
+        </div>
         {% endif %}
-    </div>
-    {% endif %}
 
         <div class="d-flex align-items-center mb-3">
             {% if parent_path %}
                 <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary btn-sm mr-3">⬆</a>
             {% endif %}
             <span>data/<strong>{{ current_path }}</strong></span>
+
+            <!-- play carpeta completa -->
+            {% if has_audio %}
+                <a href="{{ url_for('web_player', path=current_path) }}"
+                   class="btn btn-sm btn-purple ml-3"
+                   target="_blank">
+                   ▶ Play
+                </a>
+            {% endif %}
         </div>
 
         <hr>
 
         {% set protected_items = ['main-mix', 'stream-images', 'streams.json'] %}
 
+        <!-- extensiones multimedia -->
+        {% set media_exts = ('.mp3','.wav','.flac','.ogg','.aac','.m4a','.mp4','.webm','.ogv','.mkv') %}
+
         <ul class="list-group">
             {% for item in items %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
+
                     {% if item.is_dir %}
                         <a href="{{ url_for('file_manager', path=item.path) }}">📁 {{ item.name }}</a>
 
@@ -48,13 +61,39 @@
                         {% endif %}
 
                     {% else %}
-                        📄 {{ item.name }}
-                        <div>
-                            <a href="{{ url_for('download_file', path=item.path) }}" class="btn btn-sm btn-primary">⇩</a>
+
+                        <span>
+                            {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
+                                🎬                            {% elif item.name.lower().endswith(media_exts) %}
+                                🎵                            {% else %}
+                                📄                            {% endif %}
+                            {{ item.name }}
+                        </span>
+
+                        <div class="d-flex align-items-center">
+
+                            <!-- boton unico de play -->
+                            {% if item.name.lower().endswith(media_exts) %}
+                                <a href="{{ url_for('web_player', path=item.path) }}"
+                                   class="btn btn-sm btn-purple mr-1"
+                                   target="_blank"
+                                   title="Play">
+                                   ▶
+                                </a>
+                            {% endif %}
+
+                            <a href="{{ url_for('download_file', path=item.path) }}"
+                               class="btn btn-sm btn-primary mr-1">
+                               ⇩
+                            </a>
+
                             {% if item.name not in protected_items %}
                                 <button class="btn btn-sm btn-danger delete-button"
-                                        data-path="{{ item.path }}" data-folder="false">✗</button>
+                                        data-path="{{ item.path }}" data-folder="false">
+                                        ✗
+                                </button>
                             {% endif %}
+
                         </div>
                     {% endif %}
                 </li>
@@ -70,9 +109,8 @@
             <label class="mt-3"><strong>Directory:</strong></label>
             <input type="file" name="files" class="form-control mb-2" webkitdirectory directory multiple>
 
-    <button type="submit" class="btn btn-success mt-3">Upload</button>
+            <button type="submit" class="btn btn-success mt-3">Upload</button>
         </form>
-
 
     </div>
 

@@ -9,6 +9,9 @@ import time
 import json
 from pathlib import Path
 
+import subprocess
+import sys
+
 CONFIG_FILE = Path("/home/radiobit/config.json")
 
 
@@ -63,6 +66,16 @@ class ControlReproduccion:
         self.ultimo_frame_mp3 = None
         self.idle_image = None
         self._create_mpv()  # crear el objeto mpv segun config.json
+
+
+        #### nostr-engine ####
+
+        self.conv_cache = {}              # RAM DB
+        self.conv_queue = asyncio.Queue() # writes async
+        self.conv_lock = asyncio.Lock()   # solo para flush a disco
+
+        self.seen_dms = set()
+
 
 
     ###### --------------- LOAD MPV --------------- ######
@@ -1176,13 +1189,90 @@ class ControlReproduccion:
         return "".join(texto)
 
 
-            ###### --------------- MENU NOSTR MSG --------------- ######
+    ###### --------------- MENU NOSTR MSG --------------- ######
+
+
+    def norm_hex(self, h):
+        return (h or "").lower().strip()
+
+
+    def load_conversations_file(self):
+        path = "/home/radiobit/stream/conversations.json"
+        try:
+            with open(path, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+
+
+    def init_conversations_cache(self):
+        self.conv_cache = self.load_conversations_file()
+
+
+    async def start_nostr_listener(self):
+
+        cmd = [
+            "/home/radiobit/stream/nostr-engine/nostr-engine",
+            "listen-dm"
+        ]
+
+        self.nostr_proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        async def read_stdout():
+            while True:
+                line = await self.nostr_proc.stdout.readline()
+                if not line:
+                    break
+
+                try:
+                    msg = json.loads(line.decode().strip())
+
+                    if msg.get("type") != "dm":
+                        continue
+
+                    sender = self.norm_hex(msg.get("sender"))
+                    text = msg.get("msg", "")
+
+                    if sender and text:
+                        await self.handle_incoming_dm(sender, text)
+
+                except Exception:
+                    continue
+
+        async def read_stderr():
+            while True:
+                err = await self.nostr_proc.stderr.readline()
+                if not err:
+                    break
+                # debug:
+                # print("NOSTR ERR:", err.decode().strip())
+
+        asyncio.create_task(read_stdout())
+        asyncio.create_task(read_stderr())
+
+
+    async def handle_incoming_dm(self, sender, text):
+        sender = self.norm_hex(sender)
+        asyncio.create_task(self.save_message(sender, "in", text))
+
+
+
+
+    async def start_services(self):
+        self.init_conversations_cache()
+        asyncio.create_task(self.start_nostr_listener())
+        asyncio.create_task(self.conversation_writer())
+
 
     async def menu_mensaje(self, leer_entrada):
         self.en_menu = True
         await self.pause_update_loop()
 
-        opciones = ["Inbox", "Send", "Publish"]
+        opciones = ["Messages", "Write DM", "Public note"]
         seleccion = 0
         total = len(opciones)
 
@@ -1199,10 +1289,10 @@ class ControlReproduccion:
             elif entrada == "enter":
 
                 if seleccion == 0:
-                    await self.menu_inbox(leer_entrada)
+                    await self.menu_messages(leer_entrada)
 
                 elif seleccion == 1:
-                    await self.menu_send(leer_entrada)
+                    await self.menu_write_msg(leer_entrada)
 
                 elif seleccion == 2:
                     await self.menu_publish(leer_entrada)
@@ -1218,23 +1308,211 @@ class ControlReproduccion:
         self.refresh_display()
 
 
-    async def menu_inbox(self, leer_entrada):
-        await self.cerrar_menu_async()
+    async def menu_messages(self, leer_entrada):
 
-        img = self.lcd_interface.draw_text_on_lcd("Inbox empty")
-        self.lcd_interface.display_image(img)
-        await asyncio.sleep(1.5)
+        data = self.conv_cache
 
-        return
+        if not data:
+            img = self.lcd_interface.draw_text_on_lcd("No messages")
+            self.lcd_interface.display_image(img)
+            await asyncio.sleep(1.5)
+            return
 
-    async def menu_send(self, leer_entrada):
-        await self.cerrar_menu_async()
+        contactos = self.load_contacts()
 
-        img = self.lcd_interface.draw_text_on_lcd("Send not ready")
-        self.lcd_interface.display_image(img)
-        await asyncio.sleep(1.5)
+        contact_map = {}
 
-        return
+        for c in contactos:
+            hexpk = (c.get("hex") or "").lower().strip()
+            name = c.get("name", "")
+
+            if hexpk:
+                contact_map[hexpk] = name
+
+        peers = list(data.keys())
+
+        seleccion = 0
+
+        while True:
+            labels = []
+            peers = list(data.keys())
+
+            for peer in peers:
+                msgs = data.get(peer, [])
+                name = contact_map.get(peer, peer[:8])
+
+                if msgs:
+                    last_msg = msgs[-1]
+                    prefix = "You" if last_msg["dir"] == "out" else name
+                    last = f"{prefix}: {last_msg['text'][:20]}"
+                else:
+                    last = ""
+
+                labels.append(last)
+
+            await self.mostrar_menu_async(labels, seleccion, titulo="MESSAGES")
+
+            entrada = await leer_entrada()
+
+            if entrada == "abajo":
+                seleccion = (seleccion + 1) % len(peers)
+
+            elif entrada == "arriba":
+                seleccion = (seleccion - 1) % len(peers)
+
+            elif entrada == "enter":
+                await self.open_conversation(peers[seleccion], leer_entrada)
+
+            elif entrada == "volver":
+                break
+
+
+    async def open_conversation(self, peer, leer_entrada):
+
+        contactos = self.load_contacts()
+
+        hexpk = self.norm_hex(peer)
+
+        name = next(
+            (c["name"] for c in contactos if (c.get("hex") or "").lower().strip() == hexpk),
+            hexpk[:8]
+        )
+
+        data = self.conv_cache.get(hexpk, [])
+
+        if not data:
+            img = self.lcd_interface.draw_text_on_lcd("Empty chat")
+            self.lcd_interface.display_image(img)
+            await asyncio.sleep(1.5)
+            return
+
+        # ---- construir bloques ----
+        blocks = self.lcd_interface.build_chat_blocks(data, name)
+
+        viewport = self.lcd_interface.get_chat_viewport()
+        max_scroll = self.lcd_interface.get_chat_scroll_limits(blocks, viewport)
+
+        scroll_offset = max_scroll  # empieza abajo
+
+        # ---- control de cambios ----
+        last_len = len(data)
+        cached_img = None
+        last_scroll = -1
+
+        while True:
+
+            new_data = self.conv_cache.get(hexpk, [])
+
+            # ---- si hay nuevos mensajes ----
+            if len(new_data) != last_len:
+
+                data = new_data
+                last_len = len(new_data)
+
+                blocks = self.lcd_interface.build_chat_blocks(data, name)
+                max_scroll = self.lcd_interface.get_chat_scroll_limits(blocks, viewport)
+
+                # autoscroll
+                if scroll_offset >= max_scroll - 2:
+                    scroll_offset = max_scroll
+
+                cached_img = None  # forzar redraw
+
+            # ---- render solo si cambia algo ----
+            if scroll_offset != last_scroll or cached_img is None:
+
+                cached_img = self.lcd_interface.draw_chat_feed(
+                    blocks,
+                    scroll_offset
+                )
+
+                last_scroll = scroll_offset
+
+            self.lcd_interface.display_image(cached_img)
+
+            e = await leer_entrada()
+
+            if e == "abajo":
+                scroll_offset = min(scroll_offset + 1, max_scroll)
+
+            elif e == "arriba":
+                scroll_offset = max(scroll_offset - 1, 0)
+
+            elif e == "volver":
+                break
+
+            
+            await asyncio.sleep(0.01)
+
+
+
+    async def save_message(self, peer, direction, text):
+        peer = self.norm_hex(peer)
+        await self.conv_queue.put((peer, direction, text))
+
+
+    async def conversation_writer(self):
+
+        path = "/home/radiobit/stream/conversations.json"
+
+        while True:
+            batch = []
+
+            # -----------------------------
+            # 1. recoger mensajes del queue
+            # -----------------------------
+            try:
+                item = await asyncio.wait_for(self.conv_queue.get(), timeout=1.0)
+                batch.append(item)
+
+                while True:
+                    try:
+                        batch.append(self.conv_queue.get_nowait())
+                    except asyncio.QueueEmpty:
+                        break
+
+            except asyncio.TimeoutError:
+                pass
+
+            if not batch:
+                continue
+
+            # -----------------------------
+            # 2. aplicar cambios en RAM
+            #    (SIN LOCK)
+            # -----------------------------
+            for peer, direction, text in batch:
+
+                peer = self.norm_hex(peer)
+
+                if peer not in self.conv_cache:
+                    self.conv_cache[peer] = []
+
+                self.conv_cache[peer].append({
+                    "dir": direction,
+                    "text": text,
+                    "timestamp": time.time()
+                })
+
+            # -----------------------------
+            # 3. snapshot para disco
+            #    (evita escribir estructura viva)
+            # -----------------------------
+            try:
+                snapshot = dict(self.conv_cache)
+
+                with open(path, "w") as f:
+                    json.dump(snapshot, f)
+
+            except Exception:
+                # evita que el writer muera por errores de IO
+                pass
+
+            # -----------------------------
+            # 4. yield explícito (muy importante en Pi)
+            # -----------------------------
+            await asyncio.sleep(0)
+
 
     async def menu_publish(self, leer_entrada):
         self.reset_msg_state()
@@ -1276,7 +1554,10 @@ class ControlReproduccion:
                     self.msg_state = 3
 
 
-                    self.display_free_text(text)
+#                    self.display_free_text(text)
+
+                    img = self.lcd_interface.draw_chat_on_lcd(text)
+                    self.lcd_interface.display_image(img)
 
 
                 # ---- REVIEW -> PUBLISH ----
@@ -1284,7 +1565,6 @@ class ControlReproduccion:
                     img = self.lcd_interface.draw_text_on_lcd("Publishing...")
                     self.lcd_interface.display_image(img)
 
-#                    await asyncio.to_thread(self.publish_voice)
                     await self.publish_voice()
 
                     img = self.lcd_interface.draw_text_on_lcd("Sent ✔")
@@ -1335,8 +1615,8 @@ class ControlReproduccion:
         img = self.lcd_interface.draw_text_on_lcd("Transcribing...")
         self.lcd_interface.display_image(img)
 
-        base_model = "/home/radiobit/stream/whisper.cpp/models/ggml-base.bin"
-        tiny_model = "/home/radiobit/stream/whisper.cpp/models/ggml-tiny.bin"
+        base_model = "/home/radiobit/whisper.cpp/models/ggml-base.bin"
+        tiny_model = "/home/radiobit/whisper.cpp/models/ggml-tiny.bin"
 
         if os.path.exists(base_model):
             model_path = base_model
@@ -1347,10 +1627,10 @@ class ControlReproduccion:
             return ""
 
         cmd = [
-            "/home/radiobit/stream/whisper.cpp/build/bin/whisper-cli",
+            "/home/radiobit/whisper.cpp/build/bin/whisper-cli",
             "-m", model_path,
             "-f", "/tmp/radiobit_voice.wav",
-#            "-l", "es",
+            "-l", "es",
             "-otxt"
         ]
 
@@ -1410,6 +1690,141 @@ class ControlReproduccion:
 
         stdout, stderr = await proc.communicate()
 
+
+    def load_contacts(self):
+        try:
+            with open("/home/radiobit/stream/contacts.json") as f:
+                return json.load(f)
+        except:
+            return []
+
+
+    async def menu_write_msg(self, leer_entrada):
+
+        contactos = self.load_contacts()
+
+        if not contactos:
+            img = self.lcd_interface.draw_text_on_lcd("No contacts")
+            self.lcd_interface.display_image(img)
+            await asyncio.sleep(1.5)
+            return
+
+        seleccion = 0
+        total = len(contactos)
+
+        while True:
+            nombres = [c["name"] for c in contactos]
+            await self.mostrar_menu_async(nombres, seleccion, titulo="CONTACT")
+
+            entrada = await leer_entrada()
+
+            if entrada == "abajo":
+                seleccion = (seleccion + 1) % total
+
+            elif entrada == "arriba":
+                seleccion = (seleccion - 1) % total
+
+            elif entrada == "enter":
+                contacto = contactos[seleccion]
+                await self.menu_write_msg_record(leer_entrada, contacto)
+                break
+
+            elif entrada == "volver":
+                break
+
+    async def menu_write_msg_record(self, leer_entrada, contacto):
+
+        self.reset_msg_state()
+        self.en_menu = True
+
+        img = self.lcd_interface.draw_text_on_lcd(f"{contacto['name']}\nPush to record")
+        self.lcd_interface.display_image(img)
+
+        while True:
+            entrada = await leer_entrada()
+
+            if entrada == "enter":
+
+                # RECORD START
+                if self.msg_state == 0:
+                    img = self.lcd_interface.draw_text_on_lcd("Recording...\nPush to stop")
+                    self.lcd_interface.display_image(img)
+
+                    await self.start_recording()
+                    self.msg_state = 1
+
+                # RECORD STOP -> TRANSCRIBE
+                elif self.msg_state == 1:
+                    await self.stop_recording()
+
+                    img = self.lcd_interface.draw_text_on_lcd("Transcribing...")
+                    self.lcd_interface.display_image(img)
+
+                    self.msg_state = 2
+                    text = await self.transcribe_voice()
+
+                    if not text:
+                        img = self.lcd_interface.draw_text_on_lcd("No voice text")
+                        self.lcd_interface.display_image(img)
+                        await asyncio.sleep(1.5)
+                        break
+
+                    self.msg_state = 3
+#                    self.display_free_text(text)
+                    img = self.lcd_interface.draw_chat_on_lcd(text)
+                    self.lcd_interface.display_image(img)
+
+
+                # CONFIRM -> SEND DM
+                elif self.msg_state == 3:
+                    img = self.lcd_interface.draw_text_on_lcd("Sending DM...")
+                    self.lcd_interface.display_image(img)
+
+                    text = self.voice_text
+
+                    await self.send_dm_voice(contacto["hex"])
+
+                    await self.save_message(
+                        contacto["hex"],
+                        "out",
+                        text
+                    )
+
+                    img = self.lcd_interface.draw_text_on_lcd("Sent ✔")
+                    self.lcd_interface.display_image(img)
+                    await asyncio.sleep(1.5)
+
+                    break
+
+            elif entrada == "volver":
+                break
+
+        self.reset_msg_state()
+        self.en_menu = False
+        await self.cerrar_menu_async()
+
+
+    async def send_dm_voice(self, hexpk):
+        if not self.voice_text:
+            return
+
+        safe_text = self.voice_text.replace('"', "'")
+
+        cmd = [
+            "/home/radiobit/stream/nostr-engine/nostr-engine",
+            "send-dm",
+            hexpk,
+            safe_text
+        ]
+
+        proc = await asyncio.create_subprocess_exec(*cmd)
+
+        try:
+            await asyncio.wait_for(proc.communicate(), timeout=15)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.communicate()
+            print("DM timeout")
 
 
     def reset_msg_state(self):

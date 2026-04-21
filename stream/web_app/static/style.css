@@ -63,3 +63,74 @@ input[type="text"], .form-control {
 .drag-handle:active {
     cursor: grabbing;
 }
+
+/* --- WEB PLAYER --- */
+
+.track {
+    cursor: pointer;
+}
+
+.track:hover {
+    background-color: #333;
+}
+
+/* CONTENEDOR PRINCIPAL CENTRADO */
+.player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #2b2b2b;
+    border-top: 1px solid #444;
+    padding: 15px;
+
+    display: flex;
+    justify-content: center;   /* centra el bloque interno */
+}
+
+/* CONTENIDO INTERNO CENTRADO */
+.player-bar-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* texto */
+#now-playing {
+    color: lightgrey;
+    margin-bottom: 5px;
+}
+
+/* media */
+.player-bar video {
+    width: 100%;
+    display: block;
+    max-height: 70vh;
+    object-fit: contain;
+}
+
+.player-bar audio {
+    width: 100%;
+    display: block;
+}
+
+/* controles */
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* alineaciones */
+.controls.left {
+    justify-content: flex-start;
+}
+
+.controls.right {
+    justify-content: flex-end;
+}
+
+.controls.center {
+    justify-content: center;
+}

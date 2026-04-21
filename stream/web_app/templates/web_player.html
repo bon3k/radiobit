@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<h1>(◉‿◉)</h1>
+
+<div class="list-group">
+
+{% for item in items %}
+    {% if not item.is_dir and item.name.endswith(('.mp3','.wav','.flac','.ogg','.aac','.m4a','.mp4','.webm','.ogv','.mkv')) %}
+        <div class="list-group-item track" data-path="{{ item.path }}">
+            {% if item.name.endswith(('.mp4','.webm','.ogv','.mkv')) %}
+                🎬            {% else %}
+                🎵            {% endif %}
+            {{ item.name }}
+        </div>
+    {% endif %}
+{% endfor %}
+
+</div>
+
+<!-- PLAYER -->
+<div class="player-bar">
+
+    <div class="player-bar-inner">
+
+        <div id="now-playing">Nothing playing</div>
+
+        <!-- CONTROLES -->
+        <div class="controls left">
+            <button onclick="prev()" class="btn btn-purple">⏮</button>
+            <button onclick="toggle()" class="btn btn-purple">⏯</button>
+            <button onclick="next()" class="btn btn-purple">⏭</button>
+        </div>
+
+        <!-- VIDEO -->
+        <video id="player" controls></video>
+
+        <!-- AUDIO -->
+        <audio id="audio" controls></audio>
+
+    </div>
+
+</div>
+
+<script>
+
+let audio = document.getElementById("audio");
+let video = document.getElementById("player");
+
+let playlist = [];
+let index = -1;
+
+// construir playlist desde data-path (FIABLE)
+document.querySelectorAll(".track").forEach(el => {
+    playlist.push(el.dataset.path);
+
+    el.addEventListener("click", () => {
+        play(el.dataset.path);
+    });
+});
+
+function play(path) {
+    index = playlist.indexOf(path);
+
+    const ext = path.split(".").pop().toLowerCase();
+    const isVideo = ["mp4","webm","ogv","mkv"].includes(ext);
+
+    const src = "/stream/" + path;
+
+    if (isVideo) {
+        audio.pause();
+        audio.style.display = "none";
+
+        video.style.display = "block";
+        video.src = src;
+        video.play();
+
+        updateNow("🎬 " + path.split("/").pop());
+
+    } else {
+        video.pause();
+        video.style.display = "none";
+
+        audio.style.display = "block";
+        audio.src = src;
+        audio.play();
+
+        updateNow("🎵 " + path.split("/").pop());
+    }
+}
+
+function updateNow(text) {
+    document.getElementById("now-playing").innerText =
+        "Playing: " + text;
+}
+
+function toggle() {
+    if (video.style.display !== "none") {
+        if (video.paused) video.play();
+        else video.pause();
+    } else {
+        if (audio.paused) audio.play();
+        else audio.pause();
+    }
+}
+
+function next() {
+    if (index + 1 < playlist.length) {
+        index++;
+        play(playlist[index]);
+    }
+}
+
+function prev() {
+    if (index > 0) {
+        index--;
+        play(playlist[index]);
+    }
+}
+
+// autoplay siguiente
+audio.onended = () => next();
+video.onended = () => next();
+
+// estado inicial limpio
+video.style.display = "none";
+audio.style.display = "block";
+
+</script>
+
+</body>
+</html>
+

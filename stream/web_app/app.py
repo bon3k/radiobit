@@ -545,6 +545,46 @@ def shuffle_m3u_route():
 
     return jsonify(success=True, tracks=result)
 
+#### WEB PLAYER ####
+
+@app.route('/stream/<path:path>')
+@login_required
+def stream_audio(path):
+    full_path = os.path.join(BASE_DIR, path)
+
+    if not os.path.exists(full_path):
+        return "Not found", 404
+
+    return send_file(full_path)
+
+
+@app.route('/web_player/', defaults={'path': ''})
+@app.route('/web_player/<path:path>')
+@login_required
+def web_player(path):
+    current_path = os.path.join(BASE_DIR, path)
+
+    # CASO 1: es archivo - reproducir solo ese
+    if os.path.isfile(current_path):
+        items = [{
+            "name": os.path.basename(current_path),
+            "path": path,
+            "is_dir": False
+        }]
+        return render_template("web_player.html", items=items)
+
+    # CASO 2: es carpeta - comportamiento normal
+    items = []
+    for item in sorted(os.listdir(current_path)):
+        full = os.path.join(current_path, item)
+        items.append({
+            "name": item,
+            "path": os.path.relpath(full, BASE_DIR),
+            "is_dir": os.path.isdir(full)
+        })
+
+    return render_template("web_player.html", items=items)
+
 
 @app.route('/set_volume', methods=['POST'])
 @login_required
