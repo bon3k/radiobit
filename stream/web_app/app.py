@@ -17,7 +17,7 @@ app = Flask(__name__)
 # --- SESSION / SECURITY CONFIG ---
 
 app.config['SESSION_PERMANENT'] = False  # sesiones no persistentes
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+#app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True
@@ -227,21 +227,22 @@ def update_m3u_on_delete(folder, filename):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
         password = request.form.get('password')
+        username = "radiobit"
 
         if check_system_user(username, password):
             session['user'] = username
             return redirect(url_for('index'))
         else:
-            flash("Invalid username or password")
+            flash("Invalid password")
             return redirect(url_for('login'))
+
 
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
+    session.clear()
     return redirect(url_for('login'))
 
 
