@@ -1,3 +1,6 @@
 #!/bin/bash
+
+set -e
+
 source /home/radiobit/radioenv/bin/activate
-python3 /home/radiobit/stream/main.py
+exec python3 /home/radiobit/stream/main.py
