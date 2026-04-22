@@ -1,6 +1,8 @@
 # Radiobit
 
-A DIY music player for your own audio, internet radio, and Nostr streams. It runs on a Raspberry Pi Zero 2 and comes with a small LCD screen, physical buttons, and a PiSugar3 battery pack. A simple web app lets you manage playlists, radio stations, Nostr public keys, and Wi-Fi settings.
+A DIY portable media device for local audio, video, internet radio, and Nostr streams.
+Built on a Raspberry Pi Zero 2 with an LCD, physical controls, and a PiSugar3 battery pack.
+It can be used as a standalone music player with headphones, or as a lightweight media server via its web app, allowing you to manage playlists, radio stations, Nostr keys, Wi-Fi connections, and stream audio and video directly from the browser.
 
 ---
 
@@ -22,7 +24,7 @@ You can:
 ## Notes
 
 - Open the web app at http://radiobit.local on your network.
-Default login: radiobit / radiobit.
+Default password: radiobit.
 - You can change the password by plugging a screen + keyboard into the Pi and running:
 
 ```bash
