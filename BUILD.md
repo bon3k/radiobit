@@ -115,7 +115,35 @@ source ~/radioenv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 15. Enable Services and Restart
+### 15. System permissions (sudo without password)
+
+The player requires certain system-level commands to run without password
+
+On newer Raspberry Pi OS versions, sudo requires a password by default, which breaks key functionality.
+
+To fix this, allow the radiobit user to execute required commands without password.
+
+Create sudoers rule:
+
+```bash
+sudo visudo -f /etc/sudoers.d/radiobit
+```
+
+Add the following lines:
+
+```ini
+radiobit ALL=(ALL) NOPASSWD: /usr/bin/nmcli *
+radiobit ALL=(ALL) NOPASSWD: /usr/bin/systemctl poweroff
+radiobit ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot
+```
+
+Set correct permissions:
+
+```bash
+sudo chmod 440 /etc/sudoers.d/radiobit
+```
+
+### 16. Enable Services and Restart
 
 ```bash
 sudo systemctl enable stream.service
