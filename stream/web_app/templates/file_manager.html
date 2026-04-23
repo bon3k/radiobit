@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>file manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mr-2">🏠</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">log out</a>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mr-2">
+            <i class="fas fa-house"></i>
+        </a>
+
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-sign-out-alt"></i>
+        </a>
     </div>
     <div class="container mt-5 pb-5">
         <div class="pt-5"></div>
@@ -27,7 +33,9 @@
 
         <div class="d-flex align-items-center mb-3">
             {% if parent_path %}
-                <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary btn-sm mr-3">⬆</a>
+                <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-up"></i>
+                </a>
             {% endif %}
             <span>data/<strong>{{ current_path }}</strong></span>
 
@@ -53,20 +61,27 @@
                 <li class="list-group-item d-flex justify-content-between align-items-center">
 
                     {% if item.is_dir %}
-                        <a href="{{ url_for('file_manager', path=item.path) }}">📁 {{ item.name }}</a>
+                        <a href="{{ url_for('file_manager', path=item.path) }}">
+                            <i class="fas fa-folder mr-2"></i>{{ item.name }}
+                        </a>
 
                         {% if item.name not in protected_items %}
                             <button class="btn btn-sm btn-secondary delete-button"
-                                    data-path="{{ item.path }}" data-folder="true">✗</button>
+                                    data-path="{{ item.path }}" data-folder="true">
+                                 <i class="fas fa-times"></i>
+                            </button>
                         {% endif %}
 
                     {% else %}
 
                         <span>
                             {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
-                                🎬                            {% elif item.name.lower().endswith(media_exts) %}
-                                🎵                            {% else %}
-                                📄                            {% endif %}
+                                <i class="fas fa-film mr-2"></i>
+                            {% elif item.name.lower().endswith(media_exts) %}
+                                <i class="fas fa-music mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-file mr-2"></i>
+                            {% endif %}
                             {{ item.name }}
                         </span>
 
@@ -78,19 +93,19 @@
                                    class="btn btn-sm btn-purple mr-1"
                                    target="_blank"
                                    title="Play">
-                                   ▶
+                                   <i class="fas fa-play"></i>
                                 </a>
                             {% endif %}
 
                             <a href="{{ url_for('download_file', path=item.path) }}"
                                class="btn btn-sm btn-primary mr-1">
-                               ⇩
+                               <i class="fas fa-download"></i>
                             </a>
 
                             {% if item.name not in protected_items %}
                                 <button class="btn btn-sm btn-secondary delete-button"
                                         data-path="{{ item.path }}" data-folder="false">
-                                        ✗
+                                        <i class="fas fa-times"></i>
                                 </button>
                             {% endif %}
 

@@ -1,6 +1,6 @@
 body {
     background-color: #1e1e1e;  /* Gris oscuro */
-    color: grey;  /* Texto blanco */
+    color: grey;  /* Texto gris ruta directorios */
     font-family: Arial, sans-serif;  /* Fuente legible */
 }
 
@@ -22,20 +22,20 @@ a:hover {
 
 input[type="text"], .form-control {
     background-color: #2b2b2b; /* Color oscuro similar al fondo */
-    color: grey; /* Texto gris */
-    border: 1px solid #444; /* Borde sutil */
+    color: grey; /* Texto gris selector de archivos */
+    border: 1px solid #444; /* Borde */
 }
 
 .input-group-text {
     background-color: #2b2b2b; /* Color oscuro */
-    color: grey; /* Texto gris */
-    border: 1px solid #444; /* Borde sutil */
+    color: white; /* Texto blanco */
+    border: 1px solid #444; /* Borde */
 }
 
 .list-group-item {
     background-color: #2b2b2b; /* Coincide con el fondo oscuro */
-    color: grey; /* Texto gris */
-    border: 1px solid #444; /* Borde sutil */
+    color: white; /* Texto blanco */
+    border: 1px solid #444; /* Borde */
 }
 
 .list-group-item a {
