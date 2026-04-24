@@ -405,7 +405,8 @@ def file_manager(path):
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#'):
-                    playlist_order.append(os.path.basename(line))
+                    decoded = urllib.parse.unquote(line)
+                    playlist_order.append(os.path.basename(decoded))
 
     # Crear un dict de todos los archivos y carpetas reales
     entries = {}
