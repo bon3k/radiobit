@@ -3,6 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Web Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -30,13 +31,24 @@
 
     <div class="player-bar-inner">
 
-        <div id="now-playing">Nothing playing</div>
+        <div class="d-flex align-items-center mb-2" id="player-top">
 
-        <!-- CONTROLES -->
-        <div class="controls left">
-            <button onclick="prev()" class="btn btn-purple">⏮</button>
-            <button onclick="toggle()" class="btn btn-purple">⏯</button>
-            <button onclick="next()" class="btn btn-purple">⏭</button>
+            <div class="controls left mr-3">
+                <button onclick="prev()" class="btn btn-purple">
+                    <i class="fas fa-backward"></i>
+                </button>
+
+                <button onclick="toggle()" class="btn btn-purple">
+                    <i class="fas fa-play"></i>
+                </button>
+
+                <button onclick="next()" class="btn btn-purple">
+                    <i class="fas fa-forward"></i>
+                </button>
+            </div>
+
+            <div id="now-playing">Nothing playing</div>
+
         </div>
 
         <!-- VIDEO -->
@@ -57,7 +69,7 @@ let video = document.getElementById("player");
 let playlist = [];
 let index = -1;
 
-// construir playlist desde data-path (FIABLE)
+// construir playlist desde data-path
 document.querySelectorAll(".track").forEach(el => {
     playlist.push(el.dataset.path);
 
