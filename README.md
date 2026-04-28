@@ -1,8 +1,6 @@
 # Radiobit
 
-A DIY portable media device for local audio, video, internet radio, and Nostr streams.
-Built on a Raspberry Pi Zero 2 with an LCD, physical controls, and a PiSugar3 battery pack.
-It can be used as a standalone music player with headphones, or as a lightweight media server via its web app, allowing you to manage playlists, radio stations, Nostr keys, Wi-Fi connections, and stream audio and video directly from the browser.
+A DIY portable media device for playing local audio and video, internet radio, and Nostr streams. Built on a Raspberry Pi Zero 2 with an LCD, physical controls, and a PiSugar3 battery pack, it works both as a standalone music player (with headphones) and as a lightweight media server through its web app. From the browser, you can manage playlists, radio stations, Nostr keys, Wi-Fi connections, and stream audio and video directly.
 
 ---
 
