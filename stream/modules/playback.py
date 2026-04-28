@@ -959,7 +959,7 @@ class ControlReproduccion:
 
         self.streams = nuevos_streams
 
-        img = self.lcd_interface.draw_text_on_lcd("Links resolved")
+        img = self.lcd_interface.draw_text_on_lcd("Links updated")
         self.lcd_interface.display_image(img)
         await asyncio.sleep(1.5)
 
