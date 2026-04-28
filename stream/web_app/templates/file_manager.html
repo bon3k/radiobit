@@ -135,8 +135,8 @@
                 const filePath = this.dataset.path;
                 const isFolder = this.dataset.folder === 'true';
                 const message = isFolder
-                    ? "¿Seguro que deseas eliminar esta carpeta y todo su contenido?"
-                    : "¿Seguro que deseas eliminar este archivo?";
+                    ? "Delete this folder and all its contents?"
+                    : "Delete this file?";
 
                 if (confirm(message)) {
                     fetch('/delete_file?path=' + encodeURIComponent(filePath), { method: 'POST' })
