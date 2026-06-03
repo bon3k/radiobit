@@ -254,6 +254,34 @@ def index():
     return render_template('index.html', connections=connections, default_volume=default_volume)
 
 
+@app.route('/system_update', methods=['POST'])
+@login_required
+def system_update():
+    try:
+        subprocess.Popen(
+            ["sudo", "/home/radiobit/stream/system_update.sh"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 500
+
+
+@app.route('/reboot', methods=['POST'])
+@login_required
+def reboot():
+    subprocess.Popen(["sudo", "reboot"])
+    return jsonify(success=True)
+
+
+@app.route('/shutdown', methods=['POST'])
+@login_required
+def shutdown():
+    subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+    return jsonify(success=True)
+
+
 @app.route('/edit_streams', methods=['GET', 'POST'])
 @login_required
 def edit_streams():

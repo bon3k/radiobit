@@ -105,6 +105,9 @@ sudo ln -s /etc/nginx/sites-available/radiobit.conf /etc/nginx/sites-enabled/
 
 ```bash
 sudo apt install mpv libmpv-dev python3-pip pipewire pipewire-audio-client-libraries libpam0g-dev -y
+# Install latest yt-dlp (recommended over apt version)
+sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
 ```
 
 ### 14. Set Up Python Environment
@@ -132,9 +135,12 @@ sudo visudo -f /etc/sudoers.d/radiobit
 Add the following lines:
 
 ```ini
+radiobit ALL=(ALL) NOPASSWD: /home/radiobit/stream/system_update.sh
 radiobit ALL=(ALL) NOPASSWD: /usr/bin/nmcli *
 radiobit ALL=(ALL) NOPASSWD: /usr/bin/systemctl poweroff
 radiobit ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot
+radiobit ALL=(ALL) NOPASSWD: /usr/sbin/reboot
+radiobit ALL=(ALL) NOPASSWD: /usr/sbin/shutdown
 ```
 
 Set correct permissions:
