@@ -9,6 +9,10 @@ import time
 import json
 from pathlib import Path
 
+import subprocess
+import sys
+
+
 CONFIG_FILE = Path("/home/radiobit/config.json")
 
 
@@ -558,7 +562,7 @@ class ControlReproduccion:
 
 
 
-    ###### --------------- MENU TOOLS --------------- ######
+    ###### --------------- MENU UTILS --------------- ######
 
     # reinicia mpv (video ON/OFF)
     def reboot_player(self):
@@ -829,7 +833,7 @@ class ControlReproduccion:
             "Repeat playlist: ON" if self.repetir_playlist else "Repeat playlist: OFF",
             "Video",
             "ReplayGain: " + self.replaygain_mode.upper(),
-            "Refresh",
+            "Tools",
             "Scan Wi-Fi",
             "Play snake",
             "IDLE",
@@ -933,15 +937,16 @@ class ControlReproduccion:
         self.refresh_display()
 
 
-    ###### --------------- REFRESH MENU --------------- ######
+    ###### --------------- TOOLS MENU --------------- ######
 
     async def menu_refresh(self, leer_entrada):
         await self.menu_simple(
-            titulo="REFRESH",
-            opciones=["Refresh links", "Refresh playlists"],
+            titulo="TOOLS",
+            opciones=["Refresh links", "Refresh playlists", "Show IP"],
             callbacks=[
                 self.refresh_nostrbit,
-                self.refresh_playlists
+                self.refresh_playlists,
+                self.show_ip
             ],
             leer_entrada=leer_entrada
         )
@@ -999,6 +1004,29 @@ class ControlReproduccion:
         self.lcd_interface.display_image(img)
         await asyncio.sleep(1.5)
 
+
+    async def show_ip(self):
+        await self.cerrar_menu_async()
+
+        try:
+            result = subprocess.check_output("ip addr", shell=True).decode()
+
+            # Buscar IP  (evita 127.0.0.1)
+            ips = re.findall(r'inet (\d+\.\d+\.\d+\.\d+)', result)
+            ips = [ip for ip in ips if not ip.startswith("127.")]
+
+            if ips:
+                ip_text = ips[0]
+            else:
+                ip_text = "No IP"
+
+        except Exception as e:
+            ip_text = "Error IP"
+
+        img = self.lcd_interface.draw_text_on_lcd(f"{ip_text}")
+        self.lcd_interface.display_image(img)
+
+        await asyncio.sleep(8)
 
 
     ###### --------------- WIFI MENU --------------- ######
