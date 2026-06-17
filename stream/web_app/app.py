@@ -11,6 +11,9 @@ import random
 from datetime import timedelta
 import json
 
+import threading
+import time
+
 app = Flask(__name__)
 
 
@@ -157,11 +160,8 @@ def update_m3u_on_add(folder, filename):
         if item.lower().endswith('.m3u'):
             m3u_path = os.path.join(folder, item)
             break
-
     if not m3u_path:
         return
-
-    # Codificar el nombre como en el M3U original
     encoded_name = urllib.parse.quote(filename)
 
     # Leer lineas existentes y evitar duplicados
@@ -630,6 +630,82 @@ def set_volume():
         return jsonify(success=True, volume=vol)
     except Exception as e:
         return jsonify(success=False, error=str(e)), 500
+
+
+################################ yt-dlp ###########################
+
+download_status = {
+    "running": False,
+    "message": ""
+}
+
+DOWNLOADS_DIR = os.path.join(BASE_DIR, "main-mix", "downloads")
+
+
+@app.route('/download_yt', methods=['POST'])
+@login_required
+def download_yt():
+    try:
+        data = request.get_json()
+        url = data.get("url", "").strip()
+
+        if not url.startswith(("http://", "https://")):
+            return jsonify(success=False, error="Invalid URL"), 400
+
+        os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+        def task():
+            global download_status
+
+            # estado: downloading (persistente)
+            download_status["running"] = True
+            download_status["message"] = "Downloading..."
+
+            cmd = [
+                "yt-dlp",
+                "-x",
+                "--audio-format", "m4a",
+                "--postprocessor-args", "-af loudnorm",
+                "-o", os.path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s"),
+                url
+            ]
+
+            try:
+                subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                download_status["message"] = "Download completed ✔"
+
+            except Exception as e:
+
+                download_status["message"] = f"Error: {str(e)}"
+
+            download_status["running"] = False
+
+            # mensaje final 8s
+            time.sleep(8)
+
+            # limpiar SOLO el mensaje final
+            download_status["message"] = ""
+
+        threading.Thread(target=task, daemon=True).start()
+
+        return jsonify(success=True)
+
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 500
+
+
+@app.route('/download_status')
+@login_required
+def download_status_route():
+    return jsonify(download_status)
+
+
+
 
 if __name__ == '__main__':
     app.run()

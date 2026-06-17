@@ -138,3 +138,25 @@ input[type="text"], .form-control {
 .controls.center {
     justify-content: center;
 }
+
+/* --- DARK MODE FIX (Bootstrap override) --- */
+
+.card {
+    background-color: #2b2b2b;
+    color: white;
+    border: 1px solid #444;
+}
+
+.card h5 {
+    color: white;
+}
+
+.input-group .form-control {
+    background-color: #2b2b2b;
+    color: lightgrey;
+    border: 1px solid #444;
+}
+
+.input-group .btn {
+    border: 1px solid #444;
+}
