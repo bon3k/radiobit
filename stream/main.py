@@ -164,6 +164,11 @@ async def main_loop():
 
         if not in_menu and not GPIO.input(JOYSTICK_UP_PIN):
             interfaz_lcd.update_activity()
+            
+            if control_reproduccion.mode == "idle":
+                await asyncio.sleep(debounce_time)
+                continue
+            
             await handle_joystick_action(
                 JOYSTICK_UP_PIN,
                 lambda: control_reproduccion.transition("NEXT_MP3") if control_reproduccion.mode == "mp3"
@@ -173,6 +178,11 @@ async def main_loop():
 
         if not in_menu and not GPIO.input(JOYSTICK_DOWN_PIN):
             interfaz_lcd.update_activity()
+            
+            if control_reproduccion.mode == "idle":
+                await asyncio.sleep(debounce_time)
+                continue
+            
             await handle_joystick_action(
                 JOYSTICK_DOWN_PIN,
                 lambda: control_reproduccion.transition("PREV_MP3") if control_reproduccion.mode == "mp3"
