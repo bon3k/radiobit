@@ -829,13 +829,12 @@ class ControlReproduccion:
                 self.frame_pause_snapshot = self.ultimo_frame_stream
 
         opciones = [
-            "Resume Playback",
+            "↩ back",
             "Repeat playlist: ON" if self.repetir_playlist else "Repeat playlist: OFF",
             "Video",
             "ReplayGain: " + self.replaygain_mode.upper(),
             "Tools",
             "Scan Wi-Fi",
-            "Play snake",
             "IDLE",
             "Shutdown"
         ]
@@ -899,22 +898,14 @@ class ControlReproduccion:
                     await self._menu_wifi(leer_entrada)
                     break 
 
-
+                
                 elif seleccion == 6:
-                    from modules.snake_game import run_snake
-                    await self.cerrar_menu_async()
-                    await run_snake(self.lcd_interface)
-                    self.refresh_display()
-                    break
-                
-                
-                elif seleccion == 7:
                     await self.cerrar_menu_async()
                     await self.enter_idle()
                     break
                 
                 
-                elif seleccion == 8:
+                elif seleccion == 7:
                     await self.cerrar_menu_async()
                     await self.close()  # asegura cerrar streams
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")
@@ -942,11 +933,17 @@ class ControlReproduccion:
     async def menu_refresh(self, leer_entrada):
         await self.menu_simple(
             titulo="TOOLS",
-            opciones=["Refresh links", "Refresh playlists", "Show IP"],
+            opciones=[
+                "Refresh links",
+                "Refresh playlists",
+                "Snake",
+                "Show IP",
+            ],
             callbacks=[
                 self.refresh_nostrbit,
                 self.refresh_playlists,
-                self.show_ip
+                self.play_snake,
+                self.show_ip,
             ],
             leer_entrada=leer_entrada
         )
@@ -1003,6 +1000,14 @@ class ControlReproduccion:
         img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
         self.lcd_interface.display_image(img)
         await asyncio.sleep(1.5)
+
+
+    async def play_snake(self):
+        from modules.snake_game import run_snake
+
+        await self.cerrar_menu_async()
+        await run_snake(self.lcd_interface)
+        self.refresh_display()
 
 
     async def show_ip(self):
