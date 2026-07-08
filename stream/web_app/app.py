@@ -181,6 +181,54 @@ def update_m3u_on_add(folder, filename):
             f.write(f"{extinf_line}\n{encoded_name}\n")
 
 
+def update_m3u_on_rename(folder, old_name, new_name):
+
+    m3u_path = None
+
+    for item in os.listdir(folder):
+        if item.lower().endswith(".m3u"):
+            m3u_path = os.path.join(folder, item)
+            break
+
+    if not m3u_path:
+        return
+
+    old_encoded = urllib.parse.quote(old_name)
+    new_encoded = urllib.parse.quote(new_name)
+
+    with open(m3u_path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+
+    new_lines = []
+
+    i = 0
+    while i < len(lines):
+
+        line = lines[i]
+
+        if line.startswith("#EXTINF") and i + 1 < len(lines):
+
+            path_line = lines[i + 1]
+
+            if path_line == old_encoded:
+                prefix = line.split(",", 1)[0]
+                line = f"{prefix},{new_name}"
+                path_line = new_encoded
+
+            new_lines.append(line)
+            new_lines.append(path_line)
+
+            i += 2
+            continue
+
+        new_lines.append(line)
+        i += 1
+
+    with open(m3u_path, "w", encoding="utf-8") as f:
+        for line in new_lines:
+            f.write(line + "\n")
+
+
 def update_m3u_on_delete(folder, filename):
     """Eliminar una pista del .m3u de la carpeta, si existe."""
     m3u_path = None
@@ -499,6 +547,56 @@ def download_file(path):
     if os.path.exists(full_path):
         return send_file(full_path, as_attachment=True)
     return "Archivo no encontrado", 404
+
+
+@app.route("/rename_file", methods=["POST"])
+@login_required
+def rename_file():
+
+    data = request.get_json()
+
+    rel_path = data["path"]
+    new_name = data["new_name"].strip()
+
+    if not new_name:
+        return jsonify(success=False, error="Invalid name")
+
+    old_full = os.path.join(BASE_DIR, os.path.normpath(rel_path))
+
+    if not os.path.exists(old_full):
+        return jsonify(success=False, error="Not found")
+
+    folder = os.path.dirname(old_full)
+
+    old_name = os.path.basename(old_full)
+
+    new_full = os.path.join(folder, new_name)
+
+    if os.path.exists(new_full):
+        return jsonify(success=False, error="A file or folder with that name already exists")
+
+    try:
+
+        os.rename(old_full, new_full)
+
+        if os.path.isfile(new_full):
+
+            update_m3u_on_rename(folder, old_name, new_name)
+
+        else:
+            # Rename the playlist if this is a folder
+
+            old_m3u = os.path.join(new_full, old_name + ".m3u")
+            new_m3u = os.path.join(new_full, new_name + ".m3u")
+
+            if os.path.exists(old_m3u):
+                os.rename(old_m3u, new_m3u)
+
+        return jsonify(success=True)
+
+    except Exception as e:
+
+        return jsonify(success=False, error=str(e))
 
 
 @app.route('/delete_file', methods=['POST'])
