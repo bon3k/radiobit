@@ -284,7 +284,7 @@ class InterfazLCD:
         if current_line:
             lines.append(current_line)
 
-        for line in lines[:4]:  # máximo 4 líneas
+        for line in lines[:5]:  # máximo 5 lineas
             bbox = draw.textbbox((0, 0), line, font=font)
             x = max((240 - (bbox[2] - bbox[0])) // 2, margin_x)
             draw.text((x, y), line, fill="lightgrey", font=font)
@@ -397,7 +397,7 @@ class InterfazLCD:
 
 
     def get_chat_viewport(self):
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
         dummy_img = Image.new("RGB", (240, 240))
         draw = ImageDraw.Draw(dummy_img)
 
@@ -411,7 +411,7 @@ class InterfazLCD:
 
     def build_chat_blocks(self, mensajes, name):
         font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 17
         )
         dummy = Image.new("RGB", (240, 240))
         draw = ImageDraw.Draw(dummy)
@@ -507,7 +507,7 @@ class InterfazLCD:
         max_width = width - 10
 
         try:
-            fuente = ImageFont.truetype("DejaVuSans.ttf", 16)
+            fuente = ImageFont.truetype("DejaVuSans.ttf", 17)
         except IOError:
             fuente = ImageFont.load_default()
 
