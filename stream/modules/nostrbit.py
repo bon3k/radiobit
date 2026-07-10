@@ -13,8 +13,6 @@ import websockets
 
 # CONFIGURATION
 
-ZAP_STREAM_PUBKEY = "cf45a6ba1363ad7ed213a078e710d24115ae721c9b47bd1ebf4458eaefb4c2a5"
-
 DEFAULT_RELAYS = [
     "wss://nos.lol",
     "wss://relay.snort.social",
@@ -165,6 +163,15 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
                 )
 
                 if valid:
+                    
+                    status = next(
+                        (tag[1] for tag in tags if len(tag) > 1 and tag[0] == "status"),
+                        None
+                    )
+
+                    if status != "live":
+                        continue
+                    
                     for tag in tags:
                         if tag[0] == "streaming":
                             latency = time.monotonic() - start
