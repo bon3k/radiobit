@@ -3,6 +3,7 @@ import asyncio
 from mpv import MPV
 from urllib.parse import unquote
 from modules.nostrbit import resolve_m3u8_async
+from modules.tools_menu import Tools
 from modules.snake_game import run_snake
 import re
 import time
@@ -50,6 +51,7 @@ class ControlReproduccion:
         self.current_mp3_index = 0
         self.current_stream = 0
         self.mode = "idle"
+        self.tools = Tools(self)
         self.estado_reproduccion = {"time": 0, "duration": 0}
         self.update_task = None
         self.ultimo_titulo = None  # # evita redibujar pantalla si el titulo no ha cambiado
@@ -890,7 +892,7 @@ class ControlReproduccion:
 
 
                 elif seleccion == 4:
-                    await self.menu_refresh(leer_entrada)
+                    await self.tools_menu(leer_entrada)
                     break
 
 
@@ -930,108 +932,8 @@ class ControlReproduccion:
 
     ###### --------------- TOOLS MENU --------------- ######
 
-    async def menu_refresh(self, leer_entrada):
-        await self.menu_simple(
-            titulo="TOOLS",
-            opciones=[
-                "Refresh links",
-                "Refresh playlists",
-                "Snake",
-                "Show IP",
-            ],
-            callbacks=[
-                self.refresh_nostrbit,
-                self.refresh_playlists,
-                self.play_snake,
-                self.show_ip,
-            ],
-            leer_entrada=leer_entrada
-        )
-
-
-    async def refresh_nostrbit(self):
-        await self.cerrar_menu_async()
-
-        img = self.lcd_interface.draw_text_on_lcd("Resolving...")
-        self.lcd_interface.display_image(img)
-
-        nuevos_streams = await self.resolve_all_npubs(
-            self.load_streams("/home/radiobit/stream/data/streams.json")
-        )
-
-        self.streams = nuevos_streams
-
-        img = self.lcd_interface.draw_text_on_lcd("Links updated")
-        self.lcd_interface.display_image(img)
-        await asyncio.sleep(1.5)
-
-
-    async def refresh_playlists(self):
-        await self.cerrar_menu_async()
-
-        ruta_actual = self.playlists[self.current_playlist][0] if self.playlists else None
-        pista_actual = self.mp3_actual()
-
-        self.playlists = self.load_playlists(self.mp3_directory)
-
-        nuevo_indice_playlist = 0
-        nuevo_indice_pista = 0
-
-        if ruta_actual:
-            for i, (ruta, pistas) in enumerate(self.playlists):
-                if ruta == ruta_actual:
-                    nuevo_indice_playlist = i
-                    if pista_actual:
-                        try:
-                            nuevo_indice_pista = pistas.index(pista_actual)
-                        except ValueError:
-                            nuevo_indice_pista = 0
-                    break
-
-        self.current_playlist = nuevo_indice_playlist
-        self.playback_queue = (
-            self.playlists[self.current_playlist][1]
-            if self.playlists else []
-        )
-        self.current_mp3_index = (
-            nuevo_indice_pista if self.playback_queue else 0
-        )
-
-        img = self.lcd_interface.draw_text_on_lcd("Playlists updated")
-        self.lcd_interface.display_image(img)
-        await asyncio.sleep(1.5)
-
-
-    async def play_snake(self):
-        from modules.snake_game import run_snake
-
-        await self.cerrar_menu_async()
-        await run_snake(self.lcd_interface)
-        self.refresh_display()
-
-
-    async def show_ip(self):
-        await self.cerrar_menu_async()
-
-        try:
-            result = subprocess.check_output("ip addr", shell=True).decode()
-
-            # Buscar IP  (evita 127.0.0.1)
-            ips = re.findall(r'inet (\d+\.\d+\.\d+\.\d+)', result)
-            ips = [ip for ip in ips if not ip.startswith("127.")]
-
-            if ips:
-                ip_text = ips[0]
-            else:
-                ip_text = "No IP"
-
-        except Exception as e:
-            ip_text = "Error IP"
-
-        img = self.lcd_interface.draw_text_on_lcd(f"{ip_text}")
-        self.lcd_interface.display_image(img)
-
-        await asyncio.sleep(8)
+    async def tools_menu(self, leer_entrada):
+        await self.tools.menu(leer_entrada)
 
 
     ###### --------------- WIFI MENU --------------- ######
