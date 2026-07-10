@@ -124,12 +124,20 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
     req = [
         "REQ",
         sub_id,
+
         {
             "kinds": STREAM_KINDS,
-            "authors": [ZAP_STREAM_PUBKEY, pubkey_hex],
+            "authors": [pubkey_hex],
+            "limit": 5,
+        },
+
+        {
+            "kinds": STREAM_KINDS,
+            "#p": [pubkey_hex],
             "limit": 5,
         },
     ]
+    
     close = ["CLOSE", sub_id]
 
     ws = await asyncio.wait_for(websockets.connect(relay_url), RELAY_TIMEOUT)
@@ -146,13 +154,15 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
                 author = ev.get("pubkey")
                 tags = ev.get("tags", [])
 
-                valid = False
-
-                if author == ZAP_STREAM_PUBKEY:
-                    valid = any(t[0] == "p" and t[1] == pubkey_hex for t in tags)
-
-                elif author == pubkey_hex:
-                    valid = True
+                valid = (
+                    author == pubkey_hex
+                    or any(
+                        len(tag) > 1
+                        and tag[0] == "p"
+                        and tag[1] == pubkey_hex
+                        for tag in tags
+                    )
+                )
 
                 if valid:
                     for tag in tags:
@@ -162,15 +172,12 @@ async def _query_relay_inner(relay_url: str, pubkey_hex: str) -> Optional[str]:
                             await ws.send(json.dumps(close))
                             return tag[1]
 
-
             if typ == "EOSE" and sid == sub_id:
                 break
-
 
         record_relay_stat(relay_url, 0.0, False)
         await ws.send(json.dumps(close))
         return None
-
 
     finally:
         await ws.close()
@@ -195,6 +202,7 @@ def _cache_key(identifier: str) -> str:
     return identifier
 
 
+
 # NETWORK CHECK
 
 async def has_internet_async(timeout=2) -> bool:
@@ -208,6 +216,7 @@ async def has_internet_async(timeout=2) -> bool:
         return True
     except Exception:
         return False
+
 
 
 # RESOLVE
@@ -275,4 +284,3 @@ async def resolve_multiple_identifiers(
 
 def resolve_m3u8(identifier: str, timeout: float = GLOBAL_TIMEOUT) -> Optional[str]:
     return asyncio.run(resolve_m3u8_with_timeout(identifier, timeout))
-
