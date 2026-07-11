@@ -78,6 +78,11 @@ def check_system_user(username, password):
     return p.authenticate(username, password)
 
 
+def is_nostr_stream(url):
+    url = (url or "").strip().lower()
+    return url.startswith(("npub1", "nprofile1", "nevent1"))
+
+
 def list_audio_files(folder):
     files = []
     for f in sorted(os.listdir(folder)):
@@ -345,9 +350,16 @@ def edit_streams():
         for url, image in zip(links, images):
             url = url.strip()
             if url:
+                if image:
+                    image_name = image
+                elif is_nostr_stream(url):
+                    image_name = "default-nostr.png"
+                else:
+                    image_name = "default-radio.png"
+
                 streams.append({
                     "url": url,
-                    "image": image or "default.png"
+                    "image": image_name
                 })
 
         with open(STREAMS_JSON, "w", encoding="utf-8") as f:
@@ -362,9 +374,14 @@ def edit_streams():
 
     modified = False  # <-- flag para saber si necesita sobrescribir el JSON
     for s in streams:
-        img = s.get("image", "default.png")
+        img = s.get("image", "")
+
         if not img or not os.path.exists(os.path.join(STREAM_IMAGES_DIR, img)):
-            s["image"] = "default.png"
+            if is_nostr_stream(s.get("url")):
+                s["image"] = "default-nostr.png"
+            else:
+                s["image"] = "default-radio.png"
+
             modified = True
 
     # si se modifica algun stream, actualizar el JSON

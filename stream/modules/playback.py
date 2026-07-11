@@ -435,7 +435,7 @@ class ControlReproduccion:
             
             entry = self.streams[stream_index]
             img_path = os.path.join("/home/radiobit/stream/data/stream-images",
-                                    entry.get("image", "default.png"))
+                                    entry.get("image", "default-radio.png"))
             
             self.ultimo_frame_stream = img_path
             self.lcd_interface.display_image(img_path)
