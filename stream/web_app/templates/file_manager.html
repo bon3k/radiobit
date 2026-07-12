@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>file manager</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
+
     <div class="d-flex justify-content-end align-items-center mb-3 px-3 py-2">
         <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mr-2">
             <i class="fas fa-house"></i>
@@ -18,171 +21,233 @@
             <i class="fas fa-sign-out-alt"></i>
         </a>
     </div>
+
     <div class="container mt-5 pb-5">
+
         <div class="pt-5"></div>
 
-        {% if has_audio or has_m3u %}
-        <div class="mb-3">
-            <button class="btn btn-sm btn-warning" id="recreateBtn">♻ Recreate playlist</button>
+        <div class="d-flex align-items-center mb-3 px-3">
 
-            {% if has_m3u %}
-                <button class="btn btn-sm btn-info" id="shuffleBtn">🔀 Shuffle playlist</button>
-            {% endif %}
+            <div>
+                {% if has_audio or has_m3u %}
+                    <button class="btn btn-sm btn-warning" id="recreateBtn">
+                        <i class="fas fa-recycle"></i> Recreate m3u
+                    </button>
+
+                    {% if has_m3u %}
+                    <button class="btn btn-sm btn-info" id="shuffleBtn">
+                        <i class="fas fa-shuffle"></i> Shuffle
+                    </button>
+                    {% endif %}
+
+                {% endif %}
+
+                <button class="btn btn-secondary btn-sm mr-1 ml-4"
+                        id="uploadFolderBtn"
+                        title="Upload folder">
+                    <i class="fas fa-folder-plus"></i>
+                </button>
+
+                <button class="btn btn-secondary btn-sm"
+                        id="uploadFilesBtn"
+                        title="Upload files">
+                    <i class="fas fa-file-arrow-up"></i>
+                </button>
+
+
+            </div>
+
         </div>
-        {% endif %}
 
         <div class="d-flex align-items-center mb-3">
+
             {% if parent_path %}
-                <a href="{{ url_for('file_manager', path=parent_path) }}" class="btn btn-secondary btn-sm mr-3">
+                <a href="{{ url_for('file_manager', path=parent_path) }}"
+                   class="btn btn-secondary btn-sm mr-3">
                     <i class="fas fa-arrow-up"></i>
                 </a>
             {% endif %}
+
             <span>data/<strong>{{ current_path }}</strong></span>
 
-            <!-- play carpeta completa -->
             {% if has_audio %}
                 <a href="{{ url_for('web_player', path=current_path) }}"
                    class="btn btn-sm btn-purple ml-3"
                    target="_blank">
-                   ▶ Play
+                    ▶ Play
                 </a>
             {% endif %}
+
         </div>
 
         <hr>
 
         {% set protected_items = ['main-mix', 'stream-images', 'streams.json'] %}
-
-        <!-- extensiones multimedia -->
         {% set media_exts = ('.mp3','.wav','.flac','.ogg','.aac','.m4a','.mp4','.webm','.ogv','.mkv') %}
 
         <ul class="list-group">
-            {% for item in items %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
 
-                    {% if item.is_dir %}
-                        <a href="{{ url_for('file_manager', path=item.path) }}">
-                            <i class="fas fa-folder mr-2"></i>{{ item.name }}
+            {% for item in items %}
+
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+
+                {% if item.is_dir %}
+
+                    <a href="{{ url_for('file_manager', path=item.path) }}">
+                        <i class="fas fa-folder mr-2"></i>{{ item.name }}
+                    </a>
+
+                    {% if item.name not in protected_items %}
+
+                    <div class="d-flex align-items-center">
+
+                        <button class="btn btn-sm btn-secondary mr-1 rename-button"
+                                data-path="{{ item.path }}"
+                                data-name="{{ item.name }}"
+                                data-folder="true"
+                                title="Rename">
+                            <i class="fas fa-pen"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-secondary delete-button"
+                                data-path="{{ item.path }}"
+                                data-folder="true"
+                                title="Delete">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                    </div>
+
+                    {% endif %}
+
+                {% else %}
+
+                    <span>
+
+                        {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
+                            <i class="fas fa-film mr-2"></i>
+                        {% elif item.name.lower().endswith(media_exts) %}
+                            <i class="fas fa-music mr-2"></i>
+                        {% else %}
+                            <i class="fas fa-file mr-2"></i>
+                        {% endif %}
+
+                        {{ item.name }}
+
+                    </span>
+
+                    <div class="d-flex align-items-center">
+
+                        {% if item.name.lower().endswith(media_exts) %}
+                        <a href="{{ url_for('web_player', path=item.path) }}"
+                           class="btn btn-sm btn-purple mr-1"
+                           target="_blank"
+                           title="Play">
+                            <i class="fas fa-play"></i>
+                        </a>
+                        {% endif %}
+
+                        <a href="{{ url_for('download_file', path=item.path) }}"
+                           class="btn btn-sm btn-primary mr-1">
+                            <i class="fas fa-download"></i>
                         </a>
 
                         {% if item.name not in protected_items %}
-                            <div class="d-flex align-items-center">
 
-                                <button class="btn btn-sm btn-secondary mr-1 rename-button"
-                                        data-path="{{ item.path }}"
-                                        data-name="{{ item.name }}"
-                                        data-folder="true"
-                                        title="Rename">
-                                    <i class="fas fa-pen"></i>
-                                </button>
+                        <button class="btn btn-sm btn-secondary mr-1 rename-button"
+                                data-path="{{ item.path }}"
+                                data-name="{{ item.name }}"
+                                data-folder="false"
+                                title="Rename">
+                            <i class="fas fa-pen"></i>
+                        </button>
 
-                                <button class="btn btn-sm btn-secondary delete-button"
-                                        data-path="{{ item.path }}"
-                                        data-folder="true"
-                                        title="Delete">
-                                    <i class="fas fa-times"></i>
-                                </button>
-
-                            </div>
+                        <button class="btn btn-sm btn-secondary delete-button"
+                                data-path="{{ item.path }}"
+                                data-folder="false"
+                                title="Delete">
+                            <i class="fas fa-times"></i>
+                        </button>
 
                         {% endif %}
 
-                    {% else %}
+                    </div>
 
-                        <span>
-                            {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
-                                <i class="fas fa-film mr-2"></i>
-                            {% elif item.name.lower().endswith(media_exts) %}
-                                <i class="fas fa-music mr-2"></i>
-                            {% else %}
-                                <i class="fas fa-file mr-2"></i>
-                            {% endif %}
-                            {{ item.name }}
-                        </span>
+                {% endif %}
 
-                        <div class="d-flex align-items-center">
+            </li>
 
-                            <!-- boton individual de play -->
-                            {% if item.name.lower().endswith(media_exts) %}
-                                <a href="{{ url_for('web_player', path=item.path) }}"
-                                   class="btn btn-sm btn-purple mr-1"
-                                   target="_blank"
-                                   title="Play">
-                                   <i class="fas fa-play"></i>
-                                </a>
-                            {% endif %}
-
-                            <a href="{{ url_for('download_file', path=item.path) }}"
-                               class="btn btn-sm btn-primary mr-1">
-                               <i class="fas fa-download"></i>
-                            </a>
-
-                            {% if item.name not in protected_items %}
-                                <!-- renombrar -->
-                                <button class="btn btn-sm btn-secondary mr-1 rename-button"
-                                        data-path="{{ item.path }}"
-                                        data-name="{{ item.name }}"
-                                        data-folder="false"
-                                        title="Rename">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-
-                                <!-- borrar -->
-                                <button class="btn btn-sm btn-secondary delete-button"
-                                        data-path="{{ item.path }}"
-                                        data-folder="false"
-                                        title="Delete">
-                                    <i class="fas fa-times"></i>
-                                </button>
-
-                            {% endif %}
-
-                        </div>
-                    {% endif %}
-                </li>
             {% endfor %}
+
         </ul>
 
-        <hr>
-        <h3>📤</h3>
-        <form action="{{ url_for('upload_file', path=current_path) }}" method="POST" enctype="multipart/form-data">
-            <label><strong>File:</strong></label>
-            <input type="file" name="files" class="form-control mb-2" multiple>
+        <!-- hidden form -->
 
-            <label class="mt-3"><strong>Directory:</strong></label>
-            <input type="file" name="files" class="form-control mb-2" webkitdirectory directory multiple>
+        <form id="uploadForm"
+              action="{{ url_for('upload_file', path=current_path) }}"
+              method="POST"
+              enctype="multipart/form-data">
 
-            <button type="submit" class="btn btn-success mt-3">Upload</button>
+            <input
+                id="fileInput"
+                type="file"
+                name="files"
+                multiple
+                hidden>
+
+            <input
+                id="folderInput"
+                type="file"
+                name="files"
+                webkitdirectory
+                directory
+                multiple
+                hidden>
+
         </form>
 
     </div>
 
     <script>
         document.querySelectorAll('.delete-button').forEach(button => {
+
             button.addEventListener('click', function () {
+
                 const filePath = this.dataset.path;
                 const isFolder = this.dataset.folder === 'true';
+
                 const message = isFolder
                     ? "Delete this folder and all its contents?"
                     : "Delete this file?";
 
                 if (confirm(message)) {
-                    fetch('/delete_file?path=' + encodeURIComponent(filePath), { method: 'POST' })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                location.reload();
-                            } else {
-                                alert("Error: " + data.error);
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Error en la solicitud:", error);
-                            alert("Error de red o del servidor.");
-                        });
+
+                    fetch('/delete_file?path=' + encodeURIComponent(filePath), {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert("Error: " + data.error);
+                        }
+
+                    })
+                    .catch(error => {
+
+                        console.error(error);
+                        alert("Network or server error.");
+
+                    });
+
                 }
+
             });
+
         });
+
 
         document.querySelectorAll(".rename-button").forEach(button => {
 
@@ -224,36 +289,98 @@
 
         });
 
-        // --- Playlist actions ---
-        document.getElementById("recreateBtn")?.addEventListener("click", () => {
-            fetch("/recreate_m3u", {
-                method: "POST",
-                headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                body: "path={{ current_path }}"
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert("Playlist recreated (" + d.tracks + " tracks)");
-                    location.reload();
-                }
-            });
+
+        // --------------------------------------------------
+        // Upload buttons
+        // --------------------------------------------------
+
+        const uploadForm = document.getElementById("uploadForm");
+        const fileInput = document.getElementById("fileInput");
+        const folderInput = document.getElementById("folderInput");
+
+        document.getElementById("uploadFilesBtn")?.addEventListener("click", () => {
+            fileInput.click();
         });
 
-        document.getElementById("shuffleBtn")?.addEventListener("click", () => {
-            fetch("/shuffle_m3u", {
+        document.getElementById("uploadFolderBtn")?.addEventListener("click", () => {
+            folderInput.click();
+        });
+
+        fileInput?.addEventListener("change", () => {
+
+            if (fileInput.files.length)
+                uploadForm.submit();
+
+        });
+
+        folderInput?.addEventListener("change", () => {
+
+            if (folderInput.files.length)
+                uploadForm.submit();
+
+        });
+
+
+        // --------------------------------------------------
+        // Playlist actions
+        // --------------------------------------------------
+
+        document.getElementById("recreateBtn")?.addEventListener("click", () => {
+
+            fetch("/recreate_m3u", {
+
                 method: "POST",
-                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+
                 body: "path={{ current_path }}"
+
             })
             .then(r => r.json())
             .then(d => {
+
                 if (d.success) {
+
+                    alert("Playlist recreated (" + d.tracks + " tracks)");
+                    location.reload();
+
+                }
+
+            });
+
+        });
+
+
+        document.getElementById("shuffleBtn")?.addEventListener("click", () => {
+
+            fetch("/shuffle_m3u", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+
+                body: "path={{ current_path }}"
+
+            })
+            .then(r => r.json())
+            .then(d => {
+
+                if (d.success) {
+
                     alert("Playlist shuffled");
                     location.reload();
+
                 }
+
             });
+
         });
+
     </script>
+
 </body>
 </html>
