@@ -154,6 +154,16 @@
 
                         {% if item.name not in protected_items %}
 
+
+                        <button class="btn btn-sm btn-secondary mr-1 move-button"
+                                data-path="{{ item.path }}"
+                                data-name="{{ item.name }}"
+                                title="Move">
+
+                            <i class="fas fa-folder-open"></i>
+
+                        </button>
+
                         <button class="btn btn-sm btn-secondary mr-1 rename-button"
                                 data-path="{{ item.path }}"
                                 data-name="{{ item.name }}"
@@ -207,6 +217,20 @@
         </form>
 
     </div>
+
+
+    <select id="moveFolderList" hidden>
+
+    {% for folder in destination_folders %}
+
+    <option value="{{ folder }}">
+        {{ folder }}
+    </option>
+
+    {% endfor %}
+
+    </select>
+
 
     <script>
         document.querySelectorAll('.delete-button').forEach(button => {
@@ -272,6 +296,58 @@
                     body: JSON.stringify({
                         path: path,
                         new_name: newName
+                    })
+
+                })
+                .then(r => r.json())
+                .then(d => {
+
+                    if (d.success)
+                        location.reload();
+                    else
+                        alert(d.error);
+
+                });
+
+            });
+
+        });
+
+
+        document.querySelectorAll(".move-button").forEach(button => {
+
+            button.addEventListener("click", function () {
+
+                const path = this.dataset.path;
+
+                const options = document.querySelectorAll("#moveFolderList option");
+
+                let text = "Destination folder:\n\n";
+
+                options.forEach(option => {
+
+                    text += option.value + "\n";
+
+                });
+
+                const destination = prompt(text);
+
+                if (!destination)
+                    return;
+
+                fetch("/move_file", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        path: path,
+                        destination: destination
+
                     })
 
                 })

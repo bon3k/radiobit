@@ -277,6 +277,30 @@ def update_m3u_on_delete(folder, filename):
             f.write(line.rstrip('\r\n') + "\n")
 
 
+def move_file_and_update_m3u(src_rel, dst_folder_rel):
+
+    src = os.path.join(BASE_DIR, src_rel)
+    dst_folder = os.path.join(BASE_DIR, dst_folder_rel)
+
+    if not os.path.isfile(src):
+        raise Exception("File not found")
+
+    if not os.path.isdir(dst_folder):
+        raise Exception("Destination folder not found")
+
+    filename = os.path.basename(src)
+
+    dst = os.path.join(dst_folder, filename)
+
+    if os.path.exists(dst):
+        raise Exception("Destination file already exists")
+
+    shutil.move(src, dst)
+
+    recreate_m3u(os.path.dirname(src))
+    recreate_m3u(dst_folder)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -526,13 +550,27 @@ def file_manager(path):
 
     parent_path = "" if current_path == BASE_DIR else os.path.relpath(os.path.dirname(current_path), BASE_DIR)
 
+    destination_folders = []
+
+    root = os.path.join(BASE_DIR, "main-mix")
+
+    for current, dirs, files in os.walk(root):
+
+        rel = os.path.relpath(current, BASE_DIR)
+
+        if rel != ".":
+            destination_folders.append(rel)
+
+    destination_folders.sort()
+
     return render_template(
         "file_manager.html",
         items=ordered_items,
         current_path=path,
         parent_path=parent_path,
         has_audio=has_audio,
-        has_m3u=has_m3u
+        has_m3u=has_m3u,
+        destination_folders=destination_folders
     )
 
 
@@ -642,6 +680,27 @@ def delete_file():
             return jsonify(success=False, error="El archivo o directorio no existe"), 404
     except Exception as e:
         return jsonify(success=False, error=str(e)), 500
+
+
+@app.route("/move_file", methods=["POST"])
+@login_required
+def move_file():
+
+    data = request.get_json()
+
+    try:
+
+        move_file_and_update_m3u(
+            data["path"],
+            data["destination"]
+        )
+
+        return jsonify(success=True)
+
+    except Exception as e:
+
+        return jsonify(success=False, error=str(e))
+
 
 def get_default_volume():
     try:
