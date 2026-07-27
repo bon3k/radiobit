@@ -231,6 +231,49 @@
 
     </select>
 
+    <div id="moveDialog"
+         style="display:none;
+                position:fixed;
+                top:0;
+                left:0;
+                width:100%;
+                height:100%;
+                background:rgba(0,0,0,.5);
+                z-index:9999;">
+
+        <div style="
+            background:#2b2b2b;
+            color:white;
+            border:1px solid #444;
+            max-width:400px;
+            margin:100px auto;
+            padding:20px;
+            border-radius:8px;
+        ">
+
+            <h5 style="color:white;">Move file</h5>
+
+            <select id="moveSelect"
+                    class="form-control mb-3">
+            </select>
+
+            <div class="text-right">
+
+                <button id="cancelMove"
+                        class="btn btn-secondary btn-sm">
+                    Cancel
+                </button>
+
+                <button id="confirmMove"
+                        class="btn btn-primary btn-sm">
+                    Move
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
 
     <script>
         document.querySelectorAll('.delete-button').forEach(button => {
@@ -314,57 +357,73 @@
         });
 
 
+        const moveDialog = document.getElementById("moveDialog");
+        const moveSelect = document.getElementById("moveSelect");
+
+        let fileToMove = "";
+
         document.querySelectorAll(".move-button").forEach(button => {
 
             button.addEventListener("click", function () {
 
-                const path = this.dataset.path;
+                fileToMove = this.dataset.path;
 
-                const options = document.querySelectorAll("#moveFolderList option");
+                moveSelect.innerHTML = "";
 
-                let text = "Destination folder:\n\n";
+                document.querySelectorAll("#moveFolderList option").forEach(option => {
 
-                options.forEach(option => {
+                    const opt = document.createElement("option");
 
-                    text += option.value + "\n";
+                    opt.value = option.value;
+                    opt.textContent = option.value;
 
-                });
-
-                const destination = prompt(text);
-
-                if (!destination)
-                    return;
-
-                fetch("/move_file", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-
-                        path: path,
-                        destination: destination
-
-                    })
-
-                })
-                .then(r => r.json())
-                .then(d => {
-
-                    if (d.success)
-                        location.reload();
-                    else
-                        alert(d.error);
+                    moveSelect.appendChild(opt);
 
                 });
+
+                moveDialog.style.display = "block";
 
             });
 
         });
 
+        document.getElementById("cancelMove").addEventListener("click", () => {
+
+            moveDialog.style.display = "none";
+
+        });
+
+        document.getElementById("confirmMove").addEventListener("click", () => {
+
+            fetch("/move_file", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    path: fileToMove,
+                    destination: moveSelect.value
+
+                })
+
+            })
+            .then(r => r.json())
+            .then(d => {
+
+                moveDialog.style.display = "none";
+
+                if (d.success)
+                    location.reload();
+                else
+                    alert(d.error);
+
+            });
+
+        });
 
         // --------------------------------------------------
         // Upload buttons

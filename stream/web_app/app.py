@@ -552,7 +552,7 @@ def file_manager(path):
 
     destination_folders = []
 
-    root = os.path.join(BASE_DIR, "main-mix")
+    root = BASE_DIR
 
     for current, dirs, files in os.walk(root):
 
