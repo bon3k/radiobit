@@ -444,8 +444,12 @@ class ControlReproduccion:
             img = self.lcd_interface.draw_text_on_lcd("ERROR\nPlay failed")
             self.lcd_interface.display_image(img)
 
+    # helper. state check
+    def is_playing(self):
+        return self.mode in ("mp3", "stream")
 
-    # funcion auxiliar. entrega pista actual
+
+    # helper. entrega pista actual
     def mp3_actual(self):
         try:
             return self.playback_queue[self.current_mp3_index]
@@ -495,9 +499,7 @@ class ControlReproduccion:
 
     # cambio manual mp3
     async def change_mp3(self, direction):
-        if self.mode == "idle":
-            if self.playlists:
-                await self.play_playlist(self.current_playlist, self.current_mp3_index)
+        if not self.is_playing():
             return
         
         if self.mode != "mp3" or not self.playback_queue:
@@ -544,11 +546,17 @@ class ControlReproduccion:
 
     # pausa mpv
     async def toggle_pause(self):
+        if not self.is_playing():
+            return
+        
         self.mpv_player.pause = not self.mpv_player.pause
 
 
     # volumen
     async def change_volume(self, direction):
+        if not self.is_playing():
+            return
+        
         if direction == "up":
             self.mpv_player.volume = min(self.mpv_player.volume + 3, 120)
         elif direction == "down":
