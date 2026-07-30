@@ -16,7 +16,8 @@ import websockets
 DEFAULT_RELAYS = [
     "wss://nos.lol",
     "wss://relay.snort.social",
-    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://relay.shosho.live",
 ]
 
 STREAM_KINDS = [30311, 30312]
