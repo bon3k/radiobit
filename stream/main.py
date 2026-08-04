@@ -104,7 +104,7 @@ async def main_loop():
     await control_reproduccion.iniciar()
 
     button3_press_time = None
-    long_press_duration = 2
+    long_press_duration = 1
 
     while True:
         current_time = asyncio.get_event_loop().time()
