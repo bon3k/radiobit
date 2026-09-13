@@ -299,7 +299,7 @@ class InterfazLCD:
             x_inicio = 20
             y_inicio = 215
             draw.rectangle([x_inicio, y_inicio, x_inicio + ancho_barra, y_inicio + altura_barra], outline="lightgrey", width=1)
-            draw.rectangle([x_inicio, y_inicio, x_inicio + progreso_barra, y_inicio + altura_barra], fill=(0, 255, 0))
+            draw.rectangle([x_inicio, y_inicio, x_inicio + progreso_barra, y_inicio + altura_barra], fill="lightgrey")
 
         self.draw_battery_icon(draw)
         if volume_level is not None:
