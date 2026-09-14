@@ -1,33 +1,10 @@
 # nostr-engine
 
-This folder contains Go scripts for interacting with Nostr relays.
+This folder contains Go scripts for interacting with Nostr.
 
 ## Status
 - Sending public events (Kind 1) is already functional.
-- DM functionality (NIP-17) is not yet working.
-- The python scripts in the main repo still need modifications to integrate the message menu.
-- You can test it by replacing your current playback.py with the one provided in this folder.
-
-## Future plans
-- Complete integration of sending NIP-17 DMs through the player interface.
-- Improve relay management and event publishing reliability.
-- Testing and verification of NIP-44 encryption for DMs.
-
-## Usage (standalone testing)
-
-These commands allow you to test nostr-engine independently from the full player integration.
-
-Send a public note:
-
-```bash
-go run main.go --nsec "your_nsec_here" send-public "hello there"
-```
-
-Send a DM (not functional yet):
-
-```bash
-go run main.go send-dm "destination_npub" "test DM message"
-```
+- DM (NIP-17) is already functional.
 
 ## Setup and compilation
 
@@ -102,11 +79,11 @@ Paste your NSEC key, save, close and then change permissions:
 chmod 600 ~/.nostr_nsec
 ```
 
-Replace script:
+Copy nostr_menu.py:
 
 ```bash
 cd /home/radiobit/radiobit
-cp nostr-engine/playback.py /home/radiobit/stream/modules
+cp nostr-engine/nostr_menu.py /home/radiobit/stream/modules
 ```
 
 Default model language is English; to change it, edit /home/radiobit/stream/modules/playback.py, uncomment line 1336, and modify "-l", "es" to the language you want.

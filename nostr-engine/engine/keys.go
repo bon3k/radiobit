@@ -17,6 +17,7 @@ type KeyPair struct {
 	Pub  [32]byte
 }
 
+// Genera nuevas claves
 func GenerateKeys() (*KeyPair, error) {
 	var priv [32]byte
 	_, err := rand.Read(priv[:])
@@ -29,6 +30,7 @@ func GenerateKeys() (*KeyPair, error) {
 	return &KeyPair{Priv: priv, Pub: pub}, nil
 }
 
+// Cargar desde nsec
 func LoadFromNsec(nsec string) (*KeyPair, error) {
 	hrp, data, err := bech32.Decode(nsec)
 	if err != nil {
