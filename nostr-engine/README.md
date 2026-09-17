@@ -45,7 +45,7 @@ Clone whisper.cpp:
 
 ```bash
 cd /home/radiobit/stream
-git clone https://github.com/ggerganov/whisper.cpp.git
+git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git
 cd whisper.cpp
 ```
 
@@ -56,16 +56,13 @@ cmake -B build -DWHISPER_BUILD_SERVER=OFF
 cmake --build build --target whisper-cli
 ```
 
-Download the base model:
+Download the base and tiny models:
 
 ```bash
 cd models
 bash download-ggml-model.sh base
+bash download-ggml-model.sh tiny
 ```
-
-If you prefer, you can download the `tiny` model instead.
-The `base` model provides better accuracy but may be slower.
-
 
 Set NSEC key (it's better to create a new one for testing):
 
@@ -79,11 +76,3 @@ Paste your NSEC key, save, close and then change permissions:
 chmod 600 ~/.nostr_nsec
 ```
 
-Copy nostr_menu.py:
-
-```bash
-cd /home/radiobit/radiobit
-cp nostr-engine/nostr_menu.py /home/radiobit/stream/modules
-```
-
-Default model language is English; to change it, edit /home/radiobit/stream/modules/playback.py, uncomment line 1336, and modify "-l", "es" to the language you want.

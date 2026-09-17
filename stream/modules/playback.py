@@ -4,7 +4,9 @@ from mpv import MPV
 from urllib.parse import unquote
 from modules.nostrbit import resolve_m3u8_async
 from modules.tools_menu import Tools
+from modules.nostr_menu import NostrMenu
 from modules.snake_game import run_snake
+from PIL import ImageDraw
 import re
 import time
 import json
@@ -12,6 +14,7 @@ from pathlib import Path
 
 import subprocess
 import sys
+import signal
 
 
 CONFIG_FILE = Path("/home/radiobit/config.json")
@@ -70,6 +73,8 @@ class ControlReproduccion:
         self.idle_image = None
         self.last_battery_update = 0
         self._create_mpv()  # crear el objeto mpv segun config.json
+        ########## NOSTR ###########
+        self.nostr = NostrMenu(self)
 
 
     ###### --------------- LOAD MPV --------------- ######
@@ -845,6 +850,7 @@ class ControlReproduccion:
             "ReplayGain: " + self.replaygain_mode.upper(),
             "Tools",
             "Scan Wi-Fi",
+            "Nostr DM",
             "IDLE",
             "Shutdown"
         ]
@@ -908,14 +914,19 @@ class ControlReproduccion:
                     await self._menu_wifi(leer_entrada)
                     break 
 
-                
+
                 elif seleccion == 6:
+                    await self.nostr.menu_mensaje(leer_entrada)
+                    break
+
+
+                elif seleccion == 7:
                     await self.cerrar_menu_async()
                     await self.enter_idle()
                     break
                 
                 
-                elif seleccion == 7:
+                elif seleccion == 8:
                     await self.cerrar_menu_async()
                     await self.close()  # asegura cerrar streams
                     img = self.lcd_interface.draw_text_on_lcd("Power down...")

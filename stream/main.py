@@ -209,11 +209,14 @@ async def main():
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
 
-    # iniciar monitorizacion de inactividad
-    interfaz_lcd.start_inactivity_monitor()
+    # START NOSTR SERVICES
+    await control_reproduccion.nostr.start_services()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop_event.set)
+
+    # iniciar monitorizacion de inactividad
+    interfaz_lcd.start_inactivity_monitor()
 
     task = asyncio.create_task(main_loop())
 
