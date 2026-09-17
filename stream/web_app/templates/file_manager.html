@@ -8,6 +8,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+
+        /* Marco principal */
+        .file-manager-card {
+            background-color: #2b2b2b;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        /* Carpetas y archivos */
+        .file-manager-card .list-group-item {
+            padding: 15px;
+            margin-top: 10px;
+            background-color: #333;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+
+    </style>
+
 </head>
 
 <body>
@@ -85,111 +109,115 @@
         {% set protected_items = ['main-mix', 'stream-images', 'streams.json'] %}
         {% set media_exts = ('.mp3','.wav','.flac','.ogg','.aac','.m4a','.mp4','.webm','.ogv','.mkv') %}
 
-        <ul class="list-group">
+        <div class="file-manager-card">
 
-            {% for item in items %}
+            <ul class="list-group">
 
-            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {% for item in items %}
 
-                {% if item.is_dir %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
 
-                    <a href="{{ url_for('file_manager', path=item.path) }}">
-                        <i class="fas fa-folder mr-2"></i>{{ item.name }}
-                    </a>
+                    {% if item.is_dir %}
 
-                    {% if item.name not in protected_items %}
-
-                    <div class="d-flex align-items-center">
-
-                        <button class="btn btn-sm btn-secondary mr-1 rename-button"
-                                data-path="{{ item.path }}"
-                                data-name="{{ item.name }}"
-                                data-folder="true"
-                                title="Rename">
-                            <i class="fas fa-edit"></i>
-                        </button>
-
-                        <button class="btn btn-sm btn-secondary delete-button"
-                                data-path="{{ item.path }}"
-                                data-folder="true"
-                                title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-
-                    </div>
-
-                    {% endif %}
-
-                {% else %}
-
-                    <span>
-
-                        {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
-                            <i class="fas fa-film mr-2"></i>
-                        {% elif item.name.lower().endswith(media_exts) %}
-                            <i class="fas fa-music mr-2"></i>
-                        {% else %}
-                            <i class="fas fa-file mr-2"></i>
-                        {% endif %}
-
-                        {{ item.name }}
-
-                    </span>
-
-                    <div class="d-flex align-items-center">
-
-                        {% if item.name.lower().endswith(media_exts) %}
-                        <a href="{{ url_for('web_player', path=item.path) }}"
-                           class="btn btn-sm btn-purple mr-1"
-                           target="_blank"
-                           title="Play">
-                            <i class="fas fa-play"></i>
-                        </a>
-                        {% endif %}
-
-                        <a href="{{ url_for('download_file', path=item.path) }}"
-                           class="btn btn-sm btn-primary mr-1">
-                            <i class="fas fa-download"></i>
+                        <a href="{{ url_for('file_manager', path=item.path) }}">
+                            <i class="fas fa-folder mr-2"></i>{{ item.name }}
                         </a>
 
                         {% if item.name not in protected_items %}
 
+                        <div class="d-flex align-items-center">
 
-                        <button class="btn btn-sm btn-secondary mr-1 move-button"
-                                data-path="{{ item.path }}"
-                                data-name="{{ item.name }}"
-                                title="Move">
+                            <button class="btn btn-sm btn-secondary mr-1 rename-button"
+                                    data-path="{{ item.path }}"
+                                    data-name="{{ item.name }}"
+                                    data-folder="true"
+                                    title="Rename">
+                                <i class="fas fa-edit"></i>
+                            </button>
 
-                            <i class="fas fa-folder-open"></i>
+                            <button class="btn btn-sm btn-secondary delete-button"
+                                    data-path="{{ item.path }}"
+                                    data-folder="true"
+                                    title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
 
-                        </button>
-
-                        <button class="btn btn-sm btn-secondary mr-1 rename-button"
-                                data-path="{{ item.path }}"
-                                data-name="{{ item.name }}"
-                                data-folder="false"
-                                title="Rename">
-                            <i class="fas fa-edit"></i>
-                        </button>
-
-                        <button class="btn btn-sm btn-secondary delete-button"
-                                data-path="{{ item.path }}"
-                                data-folder="false"
-                                title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        </div>
 
                         {% endif %}
 
-                    </div>
+                    {% else %}
 
-                {% endif %}
+                        <span>
 
-            </li>
+                            {% if item.name.lower().endswith(('.mp4','.webm','.ogv','.mkv')) %}
+                                <i class="fas fa-film mr-2"></i>
+                            {% elif item.name.lower().endswith(media_exts) %}
+                                <i class="fas fa-music mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-file mr-2"></i>
+                            {% endif %}
 
-            {% endfor %}
+                            {{ item.name }}
 
-        </ul>
+                        </span>
+
+                        <div class="d-flex align-items-center">
+
+                            {% if item.name.lower().endswith(media_exts) %}
+                            <a href="{{ url_for('web_player', path=item.path) }}"
+                               class="btn btn-sm btn-purple mr-1"
+                               target="_blank"
+                               title="Play">
+                                <i class="fas fa-play"></i>
+                            </a>
+                            {% endif %}
+
+                            <a href="{{ url_for('download_file', path=item.path) }}"
+                               class="btn btn-sm btn-primary mr-1">
+                                <i class="fas fa-download"></i>
+                            </a>
+
+                            {% if item.name not in protected_items %}
+
+
+                            <button class="btn btn-sm btn-secondary mr-1 move-button"
+                                    data-path="{{ item.path }}"
+                                    data-name="{{ item.name }}"
+                                    title="Move">
+
+                                <i class="fas fa-folder-open"></i>
+
+                            </button>
+
+                            <button class="btn btn-sm btn-secondary mr-1 rename-button"
+                                    data-path="{{ item.path }}"
+                                    data-name="{{ item.name }}"
+                                    data-folder="false"
+                                    title="Rename">
+                                <i class="fas fa-edit"></i>
+                            </button>
+
+                            <button class="btn btn-sm btn-secondary delete-button"
+                                    data-path="{{ item.path }}"
+                                    data-folder="false"
+                                    title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endif %}
+
+                </li>
+
+                {% endfor %}
+
+            </ul>
+
+        </div>
 
         <!-- hidden form -->
 
