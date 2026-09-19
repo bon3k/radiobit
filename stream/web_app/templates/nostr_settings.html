@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Nostr Settings</title>
+
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css"
+>
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+>
+
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}"
+>
+
+<style>
+
+    .nostr-container {
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 15px;
+    }
+
+    .settings-card {
+        background-color: #2b2b2b;
+        color: white;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .settings-card h3 {
+        margin-bottom: 20px;
+    }
+
+    .settings-card h3 i {
+        margin-right: 8px;
+    }
+
+    .nsec-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    .nsec-wrapper input {
+        flex: 1;
+    }
+
+    .nsec-toggle {
+        margin-left: 8px;
+    }
+
+    .page-title {
+        margin-bottom: 25px;
+    }
+
+    .warning-box {
+        margin-top: 15px;
+        padding: 12px 15px;
+        border-radius: 5px;
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+    }
+
+    .success-box {
+        margin-bottom: 20px;
+        padding: 12px 15px;
+        border-radius: 5px;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .error-box {
+        margin-bottom: 20px;
+        padding: 12px 15px;
+        border-radius: 5px;
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    .path-label {
+        font-family: monospace;
+        font-size: 13px;
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+
+    .button-row {
+        margin-top: 15px;
+    }
+
+    /* ---------------------------------------------------------
+       CONTACTS
+       --------------------------------------------------------- */
+
+    .contact-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        margin-top: 10px;
+        background-color: #333;
+        border: 1px solid #444;
+        border-radius: 5px;
+    }
+
+    .contact-info {
+        min-width: 0;
+        margin-right: 15px;
+    }
+
+    .contact-name {
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .contact-hex {
+        color: #aaa;
+        font-family: monospace;
+        font-size: 13px;
+        word-break: break-all;
+    }
+
+    .contact-actions {
+        flex-shrink: 0;
+        display: flex;
+        gap: 8px;
+    }
+
+    .no-contacts {
+        color: #aaa;
+        padding: 15px 0;
+    }
+
+    #contact-hex,
+    #contact-npub {
+        font-family: monospace;
+    }
+
+    #npub-status {
+        margin-top: 6px;
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="nostr-container">
+
+<div class="page-title">
+    <h2>
+        Nostr Settings
+    </h2>
+</div>
+
+
+<!-- =========================================================
+     Messages
+     ========================================================= -->
+
+{% if message %}
+<div class="success-box">
+    <i class="fas fa-check-circle"></i>
+    {{ message }}
+</div>
+{% endif %}
+
+{% if error %}
+<div class="error-box">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ error }}
+</div>
+{% endif %}
+
+
+<!-- =========================================================
+     Contacts
+     ========================================================= -->
+
+<div class="settings-card">
+
+    <h3>
+        <i class="fas fa-address-book"></i>
+        Contacts
+    </h3>
+
+    <div class="path-label">
+        /home/radiobit/stream/contacts.json
+    </div>
+
+
+    <!-- Add / Edit contact -->
+
+    <form method="POST" id="contact-form">
+
+        <input
+            type="hidden"
+            name="action"
+            id="contact-action"
+            value="add_contact"
+        >
+
+        <input
+            type="hidden"
+            name="original_hex"
+            id="original-hex"
+            value=""
+        >
+
+
+        <div class="form-group">
+
+            <label for="contact-name">
+                Name
+            </label>
+
+            <input
+                type="text"
+                class="form-control"
+                id="contact-name"
+                name="name"
+                placeholder="Contact name"
+                autocomplete="off"
+                required
+            >
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label for="contact-npub">
+                Nostr npub
+            </label>
+
+            <div class="input-group">
+
+                <input
+                    type="text"
+                    class="form-control"
+                    id="contact-npub"
+                    placeholder="npub1..."
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+
+                <div class="input-group-append">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        id="convert-npub"
+                        onclick="convertNpub()"
+                    >
+                        Convert
+                    </button>
+
+                </div>
+
+            </div>
+
+            <small
+                id="npub-status"
+                class="form-text text-muted"
+            ></small>
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label for="contact-hex">
+                Public Key (hex)
+            </label>
+
+            <input
+                type="text"
+                class="form-control"
+                id="contact-hex"
+                name="hex"
+                placeholder="64-character hexadecimal public key"
+                maxlength="64"
+                autocomplete="off"
+                spellcheck="false"
+                readonly
+                required
+            >
+
+        </div>
+
+
+        <div class="button-row">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+                id="contact-submit"
+            >
+                <i class="fas fa-plus"></i>
+                Add Contact
+            </button>
+
+            <button
+                type="button"
+                class="btn btn-secondary"
+                id="contact-cancel"
+                onclick="cancelEdit()"
+                style="display: none;"
+            >
+                <i class="fas fa-times"></i>
+                Cancel
+            </button>
+
+        </div>
+
+    </form>
+
+
+    <!-- Current contacts -->
+
+    <div class="contacts-list">
+
+        <h4 class="mt-4 mb-3">
+            Current Contacts
+        </h4>
+
+        {% if contacts %}
+
+            {% for contact in contacts %}
+
+            <div class="contact-item">
+
+                <div class="contact-info">
+
+                    <div class="contact-name">
+                        {{ contact.name }}
+                    </div>
+
+                    <div class="contact-hex">
+                        {{ contact.hex }}
+                    </div>
+
+                </div>
+
+
+                <div class="contact-actions">
+
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-secondary"
+                        onclick="editContact(
+                            '{{ contact.name|e }}',
+                            '{{ contact.hex|e }}'
+                        )"
+                    >
+                        <i class="fas fa-edit"></i>
+                        Edit
+                    </button>
+
+
+                    <form
+                        method="POST"
+                        style="display: inline;"
+                        onsubmit="return confirm('Delete this contact?');"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="delete_contact"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="hex"
+                            value="{{ contact.hex }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="btn btn-sm btn-danger"
+                        >
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="no-contacts">
+                No contacts configured.
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     NSEC
+     ========================================================= -->
+
+<div class="settings-card">
+
+    <h3>
+        <i class="fas fa-key"></i>
+        Private Key
+    </h3>
+
+    <div class="path-label">
+        /home/radiobit/.nostr_nsec
+    </div>
+
+    <form method="POST">
+
+        <input
+            type="hidden"
+            name="action"
+            value="save_nsec"
+        >
+
+
+        <div class="form-group">
+
+            <label for="nsec">
+                NSEC
+            </label>
+
+
+            <div class="nsec-wrapper">
+
+                <input
+                    type="password"
+                    class="form-control"
+                    id="nsec"
+                    name="nsec"
+                    value="{{ nsec }}"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+
+
+                <button
+                    type="button"
+                    class="btn btn-secondary nsec-toggle"
+                    onclick="toggleNsec()"
+                    title="Show / hide NSEC"
+                >
+                    <i
+                        id="nsec-icon"
+                        class="fas fa-eye"
+                    ></i>
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="warning-box">
+
+            <i class="fas fa-exclamation-triangle"></i>
+
+            Keep it secret and never
+            share it with anyone.
+
+        </div>
+
+
+        <div class="button-row">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                <i class="fas fa-save"></i>
+                Save NSEC
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!-- =========================================================
+     Back
+     ========================================================= -->
+
+<div class="mb-4">
+
+    <a
+        href="{{ url_for('index') }}"
+        class="btn btn-secondary"
+    >
+        <i class="fas fa-arrow-left"></i>
+        Back
+    </a>
+
+</div>
+
+</div>
+
+<script>
+
+
+function toggleNsec() {
+
+    const input = document.getElementById("nsec");
+    const icon = document.getElementById("nsec-icon");
+
+    if (input.type === "password") {
+
+        input.type = "text";
+
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+
+    } else {
+
+        input.type = "password";
+
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+
+    }
+}
+
+
+async function convertNpub() {
+
+    const npubInput = document.getElementById("contact-npub");
+    const hexInput = document.getElementById("contact-hex");
+    const status = document.getElementById("npub-status");
+    const button = document.getElementById("convert-npub");
+
+    const npub = npubInput.value.trim();
+
+    // Clear previous result
+    hexInput.value = "";
+    status.textContent = "";
+
+    if (!npub) {
+
+        status.textContent = "Please enter an npub.";
+        return;
+
+    }
+
+    button.disabled = true;
+    button.textContent = "Converting...";
+
+    try {
+
+        const response = await fetch("/convert_npub", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                npub: npub
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+
+            status.textContent = data.error || "Invalid npub.";
+            return;
+
+        }
+
+        hexInput.value = data.hex;
+
+        status.textContent = "Valid npub.";
+
+    } catch (error) {
+
+        console.error("Error converting npub:", error);
+
+        status.textContent =
+            "Unable to convert npub.";
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Convert";
+
+    }
+}
+
+
+function editContact(name, hex) {
+
+    document.getElementById("contact-action").value =
+        "edit_contact";
+
+    document.getElementById("original-hex").value =
+        hex;
+
+    document.getElementById("contact-name").value =
+        name;
+
+    document.getElementById("contact-npub").value =
+        "";
+
+    document.getElementById("contact-hex").value =
+        hex;
+
+    document.getElementById("npub-status").textContent =
+        "";
+
+    document.getElementById("contact-submit").innerHTML =
+        '<i class="fas fa-save"></i> Save Changes';
+
+    document.getElementById("contact-cancel").style.display =
+        "inline-block";
+
+    document.getElementById("contact-name").focus();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+function cancelEdit() {
+
+    document.getElementById("contact-action").value =
+        "add_contact";
+
+    document.getElementById("original-hex").value =
+        "";
+
+    document.getElementById("contact-name").value =
+        "";
+
+    document.getElementById("contact-npub").value =
+        "";
+
+    document.getElementById("contact-hex").value =
+        "";
+
+    document.getElementById("npub-status").textContent =
+        "";
+
+    document.getElementById("contact-submit").innerHTML =
+        '<i class="fas fa-plus"></i> Add Contact';
+
+    document.getElementById("contact-cancel").style.display =
+        "none";
+}
+
+
+// Press Enter in the npub field to convert it
+
+document.getElementById("contact-npub").addEventListener(
+    "keydown",
+    function(event) {
+
+        if (event.key === "Enter") {
+
+            event.preventDefault();
+
+            convertNpub();
+
+        }
+
+    }
+);
+
+
+</script>
+
+</body>
+</html>

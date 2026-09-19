@@ -14,6 +14,8 @@ import json
 import threading
 import time
 
+import bech32
+
 app = Flask(__name__)
 
 
@@ -49,6 +51,9 @@ STREAMS_JSON = os.path.join(BASE_DIR, "streams.json")
 
 STREAM_IMAGES_DIR = os.path.join(BASE_DIR, "stream-images")
 
+CONTACTS_JSON = "/home/radiobit/stream/contacts.json"
+
+NSEC_FILE = "/home/radiobit/.nostr_nsec"
 
 # listar imagenes disponibles
 def list_stream_images():
@@ -61,7 +66,9 @@ def list_stream_images():
 def stream_images(filename):
     return send_from_directory(STREAM_IMAGES_DIR, filename)
 
-
+# ---------------------
+# login
+# ---------------------
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -77,6 +84,9 @@ def check_system_user(username, password):
     p = pam.pam()
     return p.authenticate(username, password)
 
+# ---------------------
+# Funciones auxiliares
+# ---------------------
 
 def is_nostr_stream(url):
     url = (url or "").strip().lower()
@@ -300,7 +310,9 @@ def move_file_and_update_m3u(src_rel, dst_folder_rel):
     recreate_m3u(os.path.dirname(src))
     recreate_m3u(dst_folder)
 
-
+# ---------------------
+# Rutas de login/logout
+# ---------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -322,7 +334,9 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-
+# ---------------------
+# Rutas  protegidas
+# ---------------------
 @app.route('/')
 @login_required
 def index():
@@ -749,7 +763,7 @@ def shuffle_m3u_route():
 
     return jsonify(success=True, tracks=result)
 
-#### WEB PLAYER ####
+############# WEB PLAYER ###############
 
 @app.route('/stream/<path:path>')
 @login_required
@@ -806,7 +820,7 @@ def set_volume():
         return jsonify(success=False, error=str(e)), 500
 
 
-################################ yt-dlp ###########################
+################################ YT-DLP ###########################
 
 download_status = {
     "running": False,
@@ -862,7 +876,7 @@ def download_yt():
             # mensaje final 8s
             time.sleep(8)
 
-            # limpiar SOLO el mensaje final
+            # limpiar solo el mensaje final
             download_status["message"] = ""
 
         threading.Thread(target=task, daemon=True).start()
@@ -879,7 +893,266 @@ def download_status_route():
     return jsonify(download_status)
 
 
+################## NOSTR SETTINGS ####################
+
+@app.route("/nostr_settings", methods=["GET", "POST"])
+@login_required
+def nostr_settings():
+    message = None
+    error = None
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        # ---------------------------------------------------------
+        # read saved contacts
+        # ---------------------------------------------------------
+        try:
+            with open(CONTACTS_JSON, "r", encoding="utf-8") as f:
+                contacts = json.load(f)
+
+            if not isinstance(contacts, list):
+                contacts = []
+
+        except FileNotFoundError:
+            contacts = []
+
+        except Exception as e:
+            contacts = []
+            error = f"Error reading contacts.json: {e}"
+
+        # ---------------------------------------------------------
+        # add contact
+        # ---------------------------------------------------------
+        if action == "add_contact":
+            name = request.form.get("name", "").strip()
+            hex_key = request.form.get("hex", "").strip().lower()
+
+            if not name:
+                error = "The contact name cannot be empty."
+
+            elif len(hex_key) != 64 or any(
+                c not in "0123456789abcdef" for c in hex_key
+            ):
+                error = "Invalid public key. It must contain exactly 64 hexadecimal characters."
+
+            elif any(contact.get("hex", "").lower() == hex_key for contact in contacts):
+                error = "A contact with this public key already exists."
+
+            else:
+                contacts.append({
+                    "name": name,
+                    "hex": hex_key
+                })
+
+                try:
+                    with open(CONTACTS_JSON, "w", encoding="utf-8") as f:
+                        json.dump(
+                            contacts,
+                            f,
+                            ensure_ascii=False,
+                            indent=2
+                        )
+                        f.write("\n")
+
+                    message = "Contact added successfully."
+
+                except Exception as e:
+                    error = f"Error saving contact: {e}"
+
+        # ---------------------------------------------------------
+        # Edit contact
+        # ---------------------------------------------------------
+        elif action == "edit_contact":
+            original_hex = request.form.get("original_hex", "").strip().lower()
+            name = request.form.get("name", "").strip()
+            hex_key = request.form.get("hex", "").strip().lower()
+
+            if not name:
+                error = "The contact name cannot be empty."
+
+            elif len(hex_key) != 64 or any(
+                c not in "0123456789abcdef" for c in hex_key
+            ):
+                error = "Invalid public key. It must contain exactly 64 hexadecimal characters."
+
+            else:
+                duplicate = any(
+                    contact.get("hex", "").lower() == hex_key
+                    and contact.get("hex", "").lower() != original_hex
+                    for contact in contacts
+                )
+
+                if duplicate:
+                    error = "A contact with this public key already exists."
+
+                else:
+                    found = False
+
+                    for contact in contacts:
+                        if contact.get("hex", "").lower() == original_hex:
+                            contact["name"] = name
+                            contact["hex"] = hex_key
+                            found = True
+                            break
+
+                    if not found:
+                        error = "Contact not found."
+
+                    else:
+                        try:
+                            with open(CONTACTS_JSON, "w", encoding="utf-8") as f:
+                                json.dump(
+                                    contacts,
+                                    f,
+                                    ensure_ascii=False,
+                                    indent=2
+                                )
+                                f.write("\n")
+
+                            message = "Contact updated successfully."
+
+                        except Exception as e:
+                            error = f"Error saving contact: {e}"
+
+        # ---------------------------------------------------------
+        # delete contact
+        # ---------------------------------------------------------
+        elif action == "delete_contact":
+            hex_key = request.form.get("hex", "").strip().lower()
+
+            original_length = len(contacts)
+
+            contacts = [
+                contact for contact in contacts
+                if contact.get("hex", "").lower() != hex_key
+            ]
+
+            if len(contacts) == original_length:
+                error = "Contact not found."
+
+            else:
+                try:
+                    with open(CONTACTS_JSON, "w", encoding="utf-8") as f:
+                        json.dump(
+                            contacts,
+                            f,
+                            ensure_ascii=False,
+                            indent=2
+                        )
+                        f.write("\n")
+
+                    message = "Contact deleted successfully."
+
+                except Exception as e:
+                    error = f"Error saving contacts: {e}"
+
+        # ---------------------------------------------------------
+        # save NSEC
+        # ---------------------------------------------------------
+        elif action == "save_nsec":
+            nsec_value = request.form.get("nsec", "").strip()
+
+            if not nsec_value:
+                error = "NSEC cannot be empty."
+            else:
+                try:
+                    with open(NSEC_FILE, "w", encoding="utf-8") as f:
+                        f.write(nsec_value + "\n")
+
+                    os.chmod(NSEC_FILE, 0o600)
+                    message = "NSEC saved successfully."
+
+                except Exception as e:
+                    error = f"Error saving NSEC: {e}"
 
 
+
+    # ---------------------------------------------------------
+    # read contacts.json
+    # ---------------------------------------------------------
+    try:
+        with open(CONTACTS_JSON, "r", encoding="utf-8") as f:
+            contacts = json.load(f)
+
+        if not isinstance(contacts, list):
+            contacts = []
+
+    except FileNotFoundError:
+        contacts = []
+
+    except Exception as e:
+        contacts = []
+        error = f"Error reading contacts.json: {e}"
+
+    # ---------------------------------------------------------
+    # read NSEC
+    # ---------------------------------------------------------
+    nsec = ""
+
+    try:
+        with open(NSEC_FILE, "r", encoding="utf-8") as f:
+            nsec = f.read().strip()
+
+    except FileNotFoundError:
+        nsec = ""
+
+    except Exception as e:
+        error = f"Error reading NSEC: {e}"
+
+    return render_template(
+        "nostr_settings.html",
+        contacts=contacts,
+        nsec=nsec,
+        message=message,
+        error=error
+    )
+
+
+
+@app.route("/convert_npub", methods=["POST"])
+def convert_npub():
+    data = request.get_json(silent=True) or {}
+    npub = data.get("npub", "").strip()
+
+    if not npub:
+        return jsonify({
+            "success": False,
+            "error": "Please enter an npub."
+        }), 400
+
+    try:
+        hrp, data5 = bech32.bech32_decode(npub)
+
+        if hrp != "npub" or data5 is None:
+            raise ValueError("Invalid npub")
+
+        decoded = bech32.convertbits(
+            data5,
+            5,
+            8,
+            False
+        )
+
+        if decoded is None or len(decoded) != 32:
+            raise ValueError("Invalid public key length")
+
+        pubkey_hex = bytes(decoded).hex()
+
+        return jsonify({
+            "success": True,
+            "hex": pubkey_hex
+        })
+
+    except Exception:
+        return jsonify({
+            "success": False,
+            "error": "Invalid npub."
+        }), 400
+
+
+# ---------------------
+# Init server
+# ---------------------
 if __name__ == '__main__':
     app.run()
