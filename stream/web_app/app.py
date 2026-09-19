@@ -1053,18 +1053,20 @@ def nostr_settings():
         elif action == "save_nsec":
             nsec_value = request.form.get("nsec", "").strip()
 
-            if not nsec_value:
-                error = "NSEC cannot be empty."
-            else:
-                try:
-                    with open(NSEC_FILE, "w", encoding="utf-8") as f:
+            try:
+                with open(NSEC_FILE, "w", encoding="utf-8") as f:
+                    if nsec_value:
                         f.write(nsec_value + "\n")
 
-                    os.chmod(NSEC_FILE, 0o600)
-                    message = "NSEC saved successfully."
+                os.chmod(NSEC_FILE, 0o600)
 
-                except Exception as e:
-                    error = f"Error saving NSEC: {e}"
+                if nsec_value:
+                    message = "NSEC saved successfully."
+                else:
+                    message = "NSEC removed successfully."
+
+            except Exception as e:
+                error = f"Error saving NSEC: {e}"
 
 
 
