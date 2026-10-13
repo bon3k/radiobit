@@ -307,8 +307,8 @@ def move_file_and_update_m3u(src_rel, dst_folder_rel):
 
     shutil.move(src, dst)
 
-    recreate_m3u(os.path.dirname(src))
-    recreate_m3u(dst_folder)
+    update_m3u_on_delete(os.path.dirname(src), filename)
+    update_m3u_on_add(dst_folder, filename)
 
 # ---------------------
 # Rutas de login/logout
