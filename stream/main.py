@@ -116,7 +116,7 @@ async def main_loop():
             else:
                 interfaz_lcd.update_activity()
                 await asyncio.sleep(debounce_time)
-                await control_reproduccion.toggle_mode()
+                await control_reproduccion.toggle_mode(leer_entrada_menu)
 
         if not GPIO.input(KEY2_PIN):
             if not interfaz_lcd.backlight_on:

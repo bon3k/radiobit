@@ -517,24 +517,28 @@ class ControlReproduccion:
 
 
     # cambio de modo stream/mp3
-    async def toggle_mode(self):
+    async def toggle_mode(self, leer_entrada=None):
         if self.mode == "idle":
-            # prioridad: stream si existen, si no mp3
+            # desde idle: prioridad stream
             if self.streams:
                 await self.transition("PLAY_STREAM", self.current_stream)
-            elif self.playlists:
-                await self.play_playlist(self.current_playlist, self.current_mp3_index)
-                
+
+            elif self.playlists and leer_entrada:
+                await self.seleccionar_playlist(leer_entrada)
+
         elif self.mode == "mp3":
+            # MP3 -> STREAM
             await self.transition("PLAY_STREAM", self.current_stream)
-            
+
         elif self.mode == "stream":
-            if self.playlists:
-                await self.play_playlist(self.current_playlist, self.current_mp3_index)   
+            # STREAM -> menu MP3, sin reproducir
+            if self.playlists and leer_entrada:
+                await self.enter_idle(show_screen=False)
+                await self.seleccionar_playlist(leer_entrada)
 
 
     # idle mode
-    async def enter_idle(self):
+    async def enter_idle(self, show_screen=True):
         await self.stop_playback()
         self.mpv_player.pause = False
         self.mode = "idle"
@@ -543,10 +547,11 @@ class ControlReproduccion:
         self.current_mp3_index = 0
 
         # pantalla idle
-        img = self.lcd_interface.draw_text_on_lcd(
-            "(o_o)"
-        )
-        self.lcd_interface.display_image(img)
+        if show_screen:
+            img = self.lcd_interface.draw_text_on_lcd(
+                "(o_o)"
+            )
+            self.lcd_interface.display_image(img)
 
 
     # pausa mpv
